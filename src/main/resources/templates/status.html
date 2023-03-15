@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EVCharging Status</title>
+    <style>
+        @media screen and (max-width: 1000pt) {
+            :root {
+               zoom: 300%;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1>EVCharging Status</h1>
+<table cellpadding="10">
+    <tr>
+        <td>Operating mode</td>
+        <td>{mode}</td>
+    </tr>
+    <tr>
+        <td>Max 15 min peak</td>
+        <td>{max15minpeak}W</td>
+    </tr>
+    <tr>
+        <td>Charger state</td>
+        <td>{chargerState}</td>
+    </tr>
+    <tr>
+        <td>From grid</td>
+        <td>{powerValues.fromGrid}W</td>
+    </tr>
+    <tr>
+        <td>To grid</td>
+        <td>{powerValues.toGrid}W</td>
+    </tr>
+    <tr>
+        <td>From PV</td>
+        <td>{powerValues.fromPV}W</td>
+    </tr>
+    <tr>
+        <td>Total consumption</td>
+        <td>{powerValues.totalConsumption}W</td>
+    </tr>
+</table>
+
+<br />
+<br />
+<br />
+
+<form action="/status/changemode" method="post">
+    Mode: <select name="mode"><option{#if mode.toString() == "OFF"} selected="selected"{/if}>OFF</option>
+    <option{#if mode.toString() == "OPTIMAL"} selected="selected"{/if}>OPTIMAL</option>
+    <option{#if mode.toString() == "PV_ONLY"} selected="selected"{/if}>PV_ONLY</option></select>
+    &nbsp; <input type="submit" value="Change mode" class="button" />
+</form>
+</body>
+</html>
