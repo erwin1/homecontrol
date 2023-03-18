@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.quarkus.scheduler.Scheduled.ConcurrentExecution.SKIP;
+
 @ApplicationScoped
 @Startup
 public class App {
@@ -30,7 +32,13 @@ public class App {
     @Inject
     EV ev;
 
-    private boolean stopCheckUntilReconnected = false;
+    private EVCharger.State chargerState;
+
+    @Inject
+    private javax.enterprise.event.Event<EVCharger.State> chargerEvents;
+
+
+
 
     private boolean inPeakHours() {
         LocalDateTime now = LocalDateTime.now();
@@ -43,7 +51,7 @@ public class App {
         return true;
     }
 
-    @Scheduled(every = "1m")
+    @Scheduled(every = "1m", concurrentExecution = SKIP)
     void adaptEVToPowerDifferenceEveryMinute() {
         LOGGER.log(Level.INFO, "Started check in mode {0}", configService.getCurrentMode());
 
@@ -51,20 +59,14 @@ public class App {
             return;
         }
 
-        if (charger.getState().equals(EVCharger.State.NotConnected)) {
+        EVCharger.State state = charger.getState();
+        if (chargerState != null && !chargerState.equals(state)) {
+            chargerState = state;
+            chargerEvents.fire(state);
+        }
+
+        if (state.equals(EVCharger.State.NotConnected)) {
             LOGGER.log(Level.FINEST, "Charger not connected");
-            stopCheckUntilReconnected = false;
-            return;
-        }
-
-        if (stopCheckUntilReconnected) {
-            LOGGER.log(Level.FINE, "Charging was complete. Check stopped until reconnected.");
-            return;
-        }
-
-        if (ev.isChargingComplete()) {
-            stopCheckUntilReconnected = true;
-            LOGGER.log(Level.FINE, "Charging completed.");
             return;
         }
 

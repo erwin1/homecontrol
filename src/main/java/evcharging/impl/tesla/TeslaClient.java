@@ -63,6 +63,22 @@ public class TeslaClient {
         return result;
     }
 
+    public boolean setScheduledCharging(boolean enabled, int time) throws TeslaException {
+        if (accessToken == null) {
+            accessToken = getAccessToken(refreshToken);
+        }
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/set_scheduled_charging"))
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .POST(HttpRequest.BodyPublishers.ofString("{\"enable\":\""+enabled+"\", \"time\": "+time+"}"))
+                .build();
+        JsonObject responseObject = sendRequest(request);
+        boolean result = responseObject.getJsonObject("response").getBoolean("result");
+        LOGGER.log(Level.INFO, "set scheduled charging to {0} {1}. result = {2}", new Object[]{enabled, time, result});
+        return result;
+    }
+
     public boolean wakeup() throws TeslaException {
         if (accessToken == null) {
             accessToken = getAccessToken(refreshToken);

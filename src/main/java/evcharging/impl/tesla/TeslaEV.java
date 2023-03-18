@@ -1,14 +1,12 @@
 package evcharging.impl.tesla;
 
 import evcharging.services.EV;
+import evcharging.services.EVCharger;
 import evcharging.services.NotificationService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-import javax.annotation.PostConstruct;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-import java.time.LocalDateTime;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,33 +14,52 @@ import java.util.logging.Logger;
 public class TeslaEV implements EV {
     public static final Logger LOGGER = Logger.getLogger(TeslaEV.class.getName());
 
-    @ConfigProperty(name = "EVCHARING_TESLA_REFRESHTOKEN")
-    private String refreshToken;
-
-    @ConfigProperty(name = "EVCHARING_TESLA_VEHICLE")
-    private String vehicle;
-
     @Inject
     NotificationService notificationService;
 
-    private TeslaClient teslaClient;
-    private LocalDateTime latestWakeupError = null;
+    @Inject
+    TeslaService teslaService;
 
-    //TODO: check tesla charging planning state and disable it?
+    private ChargeState chargeState;
+    private EVCharger.State chargerState;
 
-    @PostConstruct
-    public void postConstruct() {
-        teslaClient = new TeslaClient(refreshToken, vehicle);
+
+    public void receiveEVChargerStateEvent(@Observes EVCharger.State state) {
+        if (state.equals(EVCharger.State.NotConnected)) {
+            try {
+                LOGGER.info("re-enable scheduled charging");
+                teslaService.setScheduledCharging(true, 1320);
+            } catch (TeslaException e) {
+                LOGGER.severe("could not re-enable scheduled charging");
+                notificationService.sendNotification("could not re-enable scheduled charging");
+            }
+        } else {
+            if (chargerState == null || chargerState.equals(EVCharger.State.NotConnected)) {
+                try {
+                    LOGGER.info("disenable scheduled charging");
+                    teslaService.setScheduledCharging(false, 1320);
+                } catch (TeslaException e) {
+                    LOGGER.severe("could not re-enable scheduled charging");
+                    notificationService.sendNotification("could not re-enable scheduled charging");
+                }
+            }
+        }
+        chargerState = state;
     }
 
     @Override
     public boolean isChargingComplete() {
         try {
-            //TODO caching to reduce calls?
-            ChargeState chargeState = teslaClient.getChargeState();
+            if (chargeState == null) {
+                chargeState = teslaService.getChargeState();
+                LOGGER.log(Level.INFO, "Tesla charging state {0} ({1}A). Battery level {2}%", new Object[]{
+                        chargeState.getCharging_state(),
+                        chargeState.getCharge_amps(),
+                        chargeState.getBattery_level()});
+            }
             return chargeState.getBattery_level() >= chargeState.getCharge_limit_soc();
         } catch (TeslaException e) {
-            handleTeslaException(e);
+            notificationService.sendNotification("could not get tesla charge state "+e);
             throw new RuntimeException(e);
         }
     }
@@ -55,8 +72,10 @@ public class TeslaEV implements EV {
                 LOGGER.log(Level.FINE, "no power difference. leave everything as it is.");
                 return;
             }
-            //TODO: caching to reduce calls?
-            ChargeState chargeState = teslaClient.getChargeState();
+
+            if (chargeState == null) {
+                chargeState = teslaService.getChargeState();
+            }
             int currentAmps = chargeState.getCharge_amps();
             int maxAmps = chargeState.getCharge_current_request_max();
             boolean currentlyCharging = chargeState.getCharging_state().equals("Charging");
@@ -82,46 +101,26 @@ public class TeslaEV implements EV {
                 LOGGER.log(Level.INFO, "Tesla has to charge at {0}A", chargeAmps);
                 if (!currentlyCharging) {
                     currentAmps = 0;
-                    teslaClient.startCharging();
+                    teslaService.startCharging();
                     notificationService.sendNotification("Started charging at "+chargeAmps+"A");
                 }
                 if (currentAmps != chargeAmps) {
-                    teslaClient.setChargingAmps(chargeAmps);
+                    teslaService.setChargingAmps(chargeAmps);
+                    chargeState = teslaService.getChargeState();
                 }
             } else {
                 LOGGER.log(Level.INFO, "Tesla does not have to charge");
                 if (currentlyCharging) {
-                    teslaClient.stopCharging();
+                    teslaService.stopCharging();
                     notificationService.sendNotification("Stopped charging");
-                    teslaClient.setChargingAmps(5);
+                    teslaService.setChargingAmps(5);
+                    chargeState = teslaService.getChargeState();
                 }
             }
         } catch (TeslaException e) {
-            handleTeslaException(e);
+            notificationService.sendNotification("could not contact tesla "+e);
             throw new RuntimeException(e);
         }
     }
 
-    private void handleTeslaException(TeslaException e) {
-        if (e.getCode() == 401) {
-            teslaClient.clearAccessToken();
-        } else if (e.getCode() == 408) {
-            try {
-                if (latestWakeupError != null && latestWakeupError.isAfter(LocalDateTime.now().minusMinutes(3))) {
-                    notificationService.sendNotification("had to wake up tesla more than once in the last 3 minutes");
-                    latestWakeupError = null;
-                } else {
-                    latestWakeupError = LocalDateTime.now();
-                }
-                LOGGER.info("trying to wake-up tesla");
-                teslaClient.wakeup();
-            } catch (TeslaException ex) {
-                LOGGER.log(Level.SEVERE, "error in tesla wakeup", ex);
-                notificationService.sendNotification("error in tesla wake-up");
-            }
-        } else {
-            LOGGER.log(Level.SEVERE, "unexpected error in tesla call", e);
-            notificationService.sendNotification("unexpected error in tesla call "+e);
-        }
-    }
 }
