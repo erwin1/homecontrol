@@ -32,7 +32,8 @@ public class StatusResource {
                 .data("chargerState", charger.getState().toString())
                 .data("powerValues", meter.getCurrentValues())
                 .data("mode", configService.getCurrentMode())
-                .data("max15minpeak", configService.getMax15minPeak());
+                .data("max15minpeak", configService.getMax15minPeak())
+                .data("chargelimitgrid", configService.getChargeLimitFromGrid());
     }
 
     @POST
@@ -40,6 +41,14 @@ public class StatusResource {
     public Response changeMode(@FormParam("mode") Mode mode) {
         System.out.println("Have to change mode to "+mode);
         configService.setCurrentMode(mode);
+        return Response.seeOther(URI.create("/status")).build();
+    }
+
+    @POST
+    @Path("changechargelimitfromgrid")
+    public Response changeChargeLimitFromGrid(@FormParam("limit") int limit) {
+        System.out.println("Have to charge limit to "+limit);
+        configService.setChargeLimitFromGrid(limit);
         return Response.seeOther(URI.create("/status")).build();
     }
 

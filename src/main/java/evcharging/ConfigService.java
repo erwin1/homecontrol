@@ -12,6 +12,9 @@ public class ConfigService {
     @ConfigProperty(name = "max15minpeak")
     int max15minPeak;
 
+    @ConfigProperty(name = "chargelimit-grid")
+    int chargeLimitFromGrid;
+
     @ConfigProperty(name = "mode")
     Mode currentMode;
 
@@ -31,4 +34,11 @@ public class ConfigService {
         this.max15minPeak = max15minPeak;
     }
 
+    public int getChargeLimitFromGrid() {
+        return chargeLimitFromGrid;
+    }
+
+    public void setChargeLimitFromGrid(int chargeLimitFromGrid) {
+        this.chargeLimitFromGrid = chargeLimitFromGrid;
+    }
 }

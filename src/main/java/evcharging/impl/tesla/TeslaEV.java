@@ -52,10 +52,6 @@ public class TeslaEV implements EV {
         try {
             if (chargeState == null) {
                 chargeState = teslaService.getChargeState();
-                LOGGER.log(Level.INFO, "Tesla charging state {0} ({1}A). Battery level {2}%", new Object[]{
-                        chargeState.getCharging_state(),
-                        chargeState.getCharge_amps(),
-                        chargeState.getBattery_level()});
             }
             return chargeState.getBattery_level() >= chargeState.getCharge_limit_soc();
         } catch (TeslaException e) {
@@ -65,7 +61,20 @@ public class TeslaEV implements EV {
     }
 
     @Override
-    public void requestPowerConsumptionChange(int powerW) {
+    public int getCurrentBatteryLevel() {
+        try {
+            if (chargeState == null) {
+                chargeState = teslaService.getChargeState();
+            }
+            return chargeState.getBattery_level();
+        } catch (TeslaException e) {
+            notificationService.sendNotification("could not get tesla charge state "+e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void requestPowerConsumptionChange(int powerW, Integer limit) {
         try {
             int powerDiffA = powerW / 220;
             if (powerDiffA == 0) {
@@ -88,7 +97,11 @@ public class TeslaEV implements EV {
             boolean haveToCharge = false;
             int chargeAmps = (currentlyCharging ? currentAmps : 0) + powerDiffA;
 
-            if (chargeState.getBattery_level() < chargeState.getCharge_limit_soc()) {
+            if (limit == null || limit > chargeState.getCharge_limit_soc()) {
+                limit = chargeState.getCharge_limit_soc();
+            }
+
+            if (chargeState.getBattery_level() < limit) {
                 if (chargeAmps < 5) {
                     haveToCharge = false;
                 } else {

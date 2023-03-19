@@ -71,12 +71,24 @@ public class App {
         }
 
         Mode mode = configService.getCurrentMode();
-        if (inPeakHours() && mode.equals(Mode.OPTIMAL)) {
-            LOGGER.log(Level.INFO, "Switching mode to PV_ONLY because current time is peak hours");
-            mode = Mode.PV_ONLY;
+        Integer limit = null;//use default limit
+        if (mode.equals(Mode.OPTIMAL)) {
+            if (inPeakHours()) {
+                LOGGER.log(Level.INFO, "Switching mode to PV_ONLY because current time is peak hours");
+                mode = Mode.PV_ONLY;
+            } else {
+                if (ev.getCurrentBatteryLevel() >= configService.getChargeLimitFromGrid()) {
+                    LOGGER.log(Level.INFO, "Switching mode to PV_ONLY because from grid limit was reached: "+ev.getCurrentBatteryLevel());
+                    mode = Mode.PV_ONLY;
+                } else {
+                    //use custom from grid limit
+                    limit = configService.getChargeLimitFromGrid();
+                }
+            }
         }
+
         int powerDifference = powerEstimationService.calculateCurrentPowerDifference(mode);
-        ev.requestPowerConsumptionChange(powerDifference);
+        ev.requestPowerConsumptionChange(powerDifference, limit);
     }
 
 }

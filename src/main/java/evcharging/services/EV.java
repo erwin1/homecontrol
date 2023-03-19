@@ -4,6 +4,8 @@ public interface EV {
 
     boolean isChargingComplete();
 
-    void requestPowerConsumptionChange(int powerW);
+    int getCurrentBatteryLevel();
+
+    void requestPowerConsumptionChange(int powerW, Integer limit);
 
 }
