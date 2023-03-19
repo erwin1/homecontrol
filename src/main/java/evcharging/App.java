@@ -61,9 +61,9 @@ public class App {
 
         EVCharger.State state = charger.getState();
         if (chargerState != null && !chargerState.equals(state)) {
-            chargerState = state;
             chargerEvents.fire(state);
         }
+        chargerState = state;
 
         if (state.equals(EVCharger.State.NotConnected)) {
             LOGGER.log(Level.FINEST, "Charger not connected");

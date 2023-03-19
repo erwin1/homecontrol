@@ -25,23 +25,23 @@ public class TeslaEV implements EV {
 
 
     public void receiveEVChargerStateEvent(@Observes EVCharger.State state) {
+        LOGGER.info("received charger state event: "+state);
+        Boolean enable = null;
         if (state.equals(EVCharger.State.NotConnected)) {
-            try {
-                LOGGER.info("re-enable scheduled charging");
-                teslaService.setScheduledCharging(true, 1320);
-            } catch (TeslaException e) {
-                LOGGER.severe("could not re-enable scheduled charging");
-                notificationService.sendNotification("could not re-enable scheduled charging");
-            }
+            enable = Boolean.TRUE;
         } else {
             if (chargerState == null || chargerState.equals(EVCharger.State.NotConnected)) {
-                try {
-                    LOGGER.info("disenable scheduled charging");
-                    teslaService.setScheduledCharging(false, 1320);
-                } catch (TeslaException e) {
-                    LOGGER.severe("could not re-enable scheduled charging");
-                    notificationService.sendNotification("could not re-enable scheduled charging");
-                }
+                enable = Boolean.FALSE;
+            }
+        }
+        if (enable != null) {
+            try {
+                LOGGER.info((enable ? "re-enable" : "disable")+" scheduled charging");
+                teslaService.setScheduledCharging(enable, 1320);
+                this.chargeState = teslaService.getChargeState();
+            } catch (TeslaException e) {
+                LOGGER.severe("could not change scheduled charging to "+enable);
+                notificationService.sendNotification("could not change scheduled charging to "+enable);
             }
         }
         chargerState = state;
