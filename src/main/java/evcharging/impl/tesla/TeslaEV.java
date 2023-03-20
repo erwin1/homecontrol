@@ -89,7 +89,7 @@ public class TeslaEV implements EV {
             int maxAmps = chargeState.getCharge_current_request_max();
             boolean currentlyCharging = chargeState.getCharging_state().equals("Charging")
                     || chargeState.getCharging_state().equals("Starting")
-                    || chargerState.equals(EVCharger.State.InProgress);
+                    || (chargerState != null && chargerState.equals(EVCharger.State.InProgress));
 
             LOGGER.log(Level.INFO, "Tesla charging state {0} ({1}A). Battery level {2}%", new Object[]{
                     chargeState.getCharging_state(),
