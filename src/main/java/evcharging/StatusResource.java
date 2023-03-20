@@ -23,6 +23,12 @@ public class StatusResource {
     ConfigService configService;
 
     @Inject
+    PeakService peakService;
+
+    @Inject
+    PowerEstimationService powerEstimationService;
+
+    @Inject
     Template status;
 
     @GET
@@ -33,6 +39,10 @@ public class StatusResource {
                 .data("powerValues", meter.getCurrentValues())
                 .data("mode", configService.getCurrentMode())
                 .data("max15minpeak", configService.getMax15minPeak())
+                .data("actualmax15minpeak", powerEstimationService.getCurrentMonth15minPeak())
+                .data("min15minpeak", configService.getMin15minPeak())
+                .data("peakstrategy", configService.getPeakStrategy())
+                .data("currentmonth15minpeak", peakService.getCurrentMonth15minUsagePeak())
                 .data("chargelimitgrid", configService.getChargeLimitFromGrid());
     }
 
@@ -41,6 +51,14 @@ public class StatusResource {
     public Response changeMode(@FormParam("mode") Mode mode) {
         System.out.println("Have to change mode to "+mode);
         configService.setCurrentMode(mode);
+        return Response.seeOther(URI.create("/status")).build();
+    }
+
+    @POST
+    @Path("changepeakstrategy")
+    public Response changePeakStrategy(@FormParam("strategy") PeakStrategy peakStrategy) {
+        System.out.println("Have to change strategy to "+peakStrategy);
+        configService.setPeakStrategy(peakStrategy);
         return Response.seeOther(URI.create("/status")).build();
     }
 

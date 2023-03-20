@@ -23,6 +23,22 @@
         <td>{max15minpeak}W</td>
     </tr>
     <tr>
+        <td>Min 15 min peak</td>
+        <td>{min15minpeak}W</td>
+    </tr>
+    <tr>
+        <td>Current month 15 min peak</td>
+        <td>{currentmonth15minpeak.valueInW}W<br/>{currentmonth15minpeak.timestamp}</td>
+    </tr>
+    <tr>
+        <td>Peak strategy</td>
+        <td>{peakstrategy}</td>
+    </tr>
+    <tr>
+        <td>Actual max 15 min peak</td>
+        <td>{actualmax15minpeak}W</td>
+    </tr>
+    <tr>
         <td>Charger state</td>
         <td>{chargerState}</td>
     </tr>
@@ -57,6 +73,17 @@
     <option{#if mode.toString() == "OPTIMAL"} selected="selected"{/if}>OPTIMAL</option>
     <option{#if mode.toString() == "PV_ONLY"} selected="selected"{/if}>PV_ONLY</option></select>
     &nbsp; <input type="submit" value="Change mode" class="button" />
+</form>
+
+<br />
+<br />
+
+<form action="/status/changepeakstrategy" method="post">
+    Peak strategy: <select name="strategy">
+    <option{#if peakstrategy.toString() == "DYNAMIC_LIMITED"} selected="selected"{/if}>DYNAMIC_LIMITED</option>
+    <option{#if peakstrategy.toString() == "DYNAMIC_UNLIMITED"} selected="selected"{/if}>DYNAMIC_UNLIMITED</option>
+    <option{#if peakstrategy.toString() == "STATIC_LIMITED"} selected="selected"{/if}>STATIC_LIMITED</option>
+    &nbsp; <input type="submit" value="Change strategy" class="button" />
 </form>
 
 <br />

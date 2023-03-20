@@ -1,5 +1,6 @@
 package evcharging;
 
+import evcharging.services.MeterReading;
 import evcharging.services.PowerValues;
 import evcharging.services.ElectricityMeter;
 
@@ -18,6 +19,9 @@ public class PowerEstimationService {
 
     @Inject
     ConfigService configService;
+
+    @Inject
+    PeakService peakService;
 
     public int calculateCurrentPowerDifference(Mode mode) {
         return switch (mode) {
@@ -39,7 +43,7 @@ public class PowerEstimationService {
         int passedTimeInSec = (int) (nowEpoch - startOfPeriodEpoch);
         int remainingTimeInSec = (15 * 60) - passedTimeInSec;
 
-        int maxUsageInPeriodnWh = configService.getMax15minPeak() / 4;
+        int maxUsageInPeriodnWh = getCurrentMonth15minPeak() / 4;
 
         PowerValues powerValues = meter.getCurrentValues();
 
@@ -70,6 +74,27 @@ public class PowerEstimationService {
         }
         LOGGER.info("difference PV power "+differenceW+"W");
         return differenceW;
+    }
+
+    public int getCurrentMonth15minPeak() {
+        if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)
+            || configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_UNLIMITED)) {
+            MeterReading currentMonth15minUsagePeak = peakService.getCurrentMonth15minUsagePeak();
+            if (currentMonth15minUsagePeak != null) {
+                ZonedDateTime now = ZonedDateTime.now();
+                if (now.getMonth() == currentMonth15minUsagePeak.getTimestamp().getMonth()) {
+                    int currentPeak = Math.max(currentMonth15minUsagePeak.getValueInW(), configService.getMin15minPeak());
+                    if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)) {
+                        return Math.min(currentPeak, configService.getMax15minPeak());
+                    } else {
+                        return currentPeak;
+                    }
+                }
+            }
+            return configService.getMin15minPeak();
+        } else {
+            return configService.getMax15minPeak();
+        }
     }
 
 }

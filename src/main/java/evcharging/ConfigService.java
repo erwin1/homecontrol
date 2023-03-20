@@ -12,6 +12,12 @@ public class ConfigService {
     @ConfigProperty(name = "max15minpeak")
     int max15minPeak;
 
+    @ConfigProperty(name = "min15minpeak")
+    int min15minPeak;
+
+    @ConfigProperty(name = "peakstrategy")
+    PeakStrategy peakStrategy;
+
     @ConfigProperty(name = "chargelimit-grid")
     int chargeLimitFromGrid;
 
@@ -32,6 +38,22 @@ public class ConfigService {
 
     public void setMax15minPeak(int max15minPeak) {
         this.max15minPeak = max15minPeak;
+    }
+
+    public int getMin15minPeak() {
+        return min15minPeak;
+    }
+
+    public void setMin15minPeak(int min15minPeak) {
+        this.min15minPeak = min15minPeak;
+    }
+
+    public PeakStrategy getPeakStrategy() {
+        return peakStrategy;
+    }
+
+    public void setPeakStrategy(PeakStrategy peakStrategy) {
+        this.peakStrategy = peakStrategy;
     }
 
     public int getChargeLimitFromGrid() {
