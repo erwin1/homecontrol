@@ -15,10 +15,10 @@ import java.util.logging.Logger;
 public class TeslaService {
     public static final Logger LOGGER = Logger.getLogger(TeslaService.class.getName());
 
-    @ConfigProperty(name = "EVCHARING_TESLA_REFRESHTOKEN")
+    @ConfigProperty(name = "EVCHARGING_TESLA_REFRESHTOKEN")
     String refreshToken;
 
-    @ConfigProperty(name = "EVCHARING_TESLA_VEHICLE")
+    @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE")
     String vehicle;
     private TeslaClient teslaClient;
 

@@ -10,17 +10,17 @@ import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.net.URLConnection;
 
-@ApplicationScoped
 /**
  * SMA implementation for the EVCharger interface.
  * It uses a reverse engineered version of the device local SMA web admin UI .
  */
+@ApplicationScoped
 public class SMACharger implements EVCharger {
-    @ConfigProperty(name = "EVCHARING_CHARGER_IP")
+    @ConfigProperty(name = "EVCHARGING_CHARGER_IP")
     private String chargerIp;
-    @ConfigProperty(name = "EVCHARING_CHARGER_USERNAME")
+    @ConfigProperty(name = "EVCHARGING_CHARGER_USERNAME")
     private String chargerUserName;
-    @ConfigProperty(name = "EVCHARING_CHARGER_PASSWORD")
+    @ConfigProperty(name = "EVCHARGING_CHARGER_PASSWORD")
     private String chargerPassword;
 
     private String token;
@@ -51,7 +51,7 @@ public class SMACharger implements EVCharger {
             if (conn.getResponseCode() == 401) {
                 throw new SMAAuthException();
             }
-            String body = new String(conn.getInputStream().readAllBytes());//TOOD catch 401 error
+            String body = new String(conn.getInputStream().readAllBytes());
             conn.getInputStream().close();
 //            System.out.println("BODY = "+b);
             JsonObject object = new JsonObject(body);

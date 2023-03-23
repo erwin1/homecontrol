@@ -8,14 +8,15 @@ This project automates EV charging using the following constraints:
 On a high level, it works like this:
 
 ```mermaid
-flowchart TD
+flowchart LR
 start{{Run every minute}} --> checkconnected{Is charger connected?}
-checkconnected --yes--> checkcomplete{Is charging complete?}
-checkcomplete --no--> calcpower{Check charging mode}
+checkconnected --yes--> calcpower{Check charging mode}
 peakhours --yes--> usepv[Calculate charging  power based<br>on current grid injection]
+checklevel --above setting--> usepv
 calcpower --mode: PV_ONLY--> usepv
 calcpower --mode: OPTIMAL--> peakhours{In peak hours?}
-peakhours --no--> useopt[Calculate charging power based on<br>maximum 15m peak usage]
+peakhours --no--> checklevel{Check current<br>battery level}
+checklevel --below setting--> useopt[Calculate charging power based on<br>maximum 15m peak usage]
 usepv --> charge{{Compare calculated power<br>with current EV charging power<br>and make change accordingly}}
 useopt --> charge
 ```
@@ -133,9 +134,9 @@ quarkus.log.category."evcharging".level=FINE
 When using `SMACharger` as the `EVCharger` implementation, these settings must be set in `.env`:
 
 ```properties
-EVCHARING_CHARGER_IP=x.x.x.x
-EVCHARING_CHARGER_USERNAME=...
-EVCHARING_CHARGER_PASSWORD=...
+EVCHARGING_CHARGER_IP=x.x.x.x
+EVCHARGING_CHARGER_USERNAME=...
+EVCHARGING_CHARGER_PASSWORD=...
 ```
 
 ### SMA Inverter
@@ -143,8 +144,8 @@ EVCHARING_CHARGER_PASSWORD=...
 When using `SMAInverter` as the `ElectricityMeter` implementation, these settings must be set in `.env`:
 
 ```properties
-EVCHARING_INVERTER_IP=x.x.x.x
-EVCHARING_INVERTER_PASSWORD=...
+EVCHARGING_INVERTER_IP=x.x.x.x
+EVCHARGING_INVERTER_PASSWORD=...
 ```
 
 ### Tesla
@@ -152,7 +153,7 @@ EVCHARING_INVERTER_PASSWORD=...
 When using `TeslaEV` as the `EV` implementation, the tesla refreh token must be set in `.env`:
 
 ```properties
-EVCHARING_TESLA_REFRESHTOKEN=...
+EVCHARGING_TESLA_REFRESHTOKEN=...
 ```
 
 To obtain a refresh token, please refer to [detailed information about Tesla API authentication](https://tesla-api.timdorr.com/api-basics/authentication) or use a tool like [Tesla Access Token Generator](https://chrome.google.com/webstore/detail/tesla-access-token-genera/kokkedfblmfbngojkeaepekpidghjgag)

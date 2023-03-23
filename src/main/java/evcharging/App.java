@@ -56,20 +56,20 @@ public class App {
         LOGGER.log(Level.INFO, "Started check in mode {0}", configService.getCurrentMode());
 
         if (configService.getCurrentMode().equals(Mode.OFF)) {
+            //stop running if mode = OFF
             return;
         }
 
         EVCharger.State state = charger.getState();
-        if (chargerState != null && !chargerState.equals(state)) {
-            chargerEvents.fire(state);
-        }
-        chargerState = state;
+        fireEVChargerStateEventIfNeeded(state);
 
         if (state.equals(EVCharger.State.NotConnected)) {
+            //stop running if charger is not connected
             LOGGER.log(Level.FINEST, "Charger not connected");
             return;
         }
 
+        //define mode based on configuration and current time:
         Mode mode = configService.getCurrentMode();
         Integer limit = null;//use default limit
         if (mode.equals(Mode.OPTIMAL)) {
@@ -89,6 +89,13 @@ public class App {
 
         int powerDifference = powerEstimationService.calculateCurrentPowerDifference(mode);
         ev.requestPowerConsumptionChange(powerDifference, limit);
+    }
+
+    private void fireEVChargerStateEventIfNeeded(EVCharger.State state) {
+        if (this.chargerState != null && !this.chargerState.equals(state)) {
+            this.chargerEvents.fire(state);
+        }
+        this.chargerState = state;
     }
 
 }

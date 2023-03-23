@@ -27,9 +27,9 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class SMAInverter implements ElectricityMeter {
     public static final Logger LOGGER = Logger.getLogger(SMAInverter.class.getName());
-    @ConfigProperty(name = "EVCHARING_INVERTER_IP")
+    @ConfigProperty(name = "EVCHARGING_INVERTER_IP")
     String inverterIp;
-    @ConfigProperty(name = "EVCHARING_INVERTER_PASSWORD")
+    @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD")
     String inverterPassword;
 
     private String sid;
