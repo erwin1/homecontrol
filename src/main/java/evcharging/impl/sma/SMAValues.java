@@ -1,23 +1,19 @@
-package evcharging.services;
+package evcharging.impl.sma;
 
-import java.time.LocalDateTime;
-
-public class PowerValues {
+public class SMAValues {
     private int toGrid;
     private int fromGrid;
     private int fromPV;
     private int totalConsumption;
-    private LocalDateTime timestamp;
 
-    public PowerValues() {
+    public SMAValues() {
     }
 
-    public PowerValues(int toGrid, int fromGrid, int fromPV, int totalConsumption) {
+    public SMAValues(int toGrid, int fromGrid, int fromPV, int totalConsumption) {
         this.toGrid = toGrid;
         this.fromGrid = fromGrid;
         this.fromPV = fromPV;
         this.totalConsumption = totalConsumption;
-        this.timestamp = LocalDateTime.now();
     }
 
     public int getToGrid() {
@@ -52,21 +48,4 @@ public class PowerValues {
         this.totalConsumption = totalConsumption;
     }
 
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    @Override
-    public String toString() {
-        return "Electricity{" +
-                "toGrid=" + toGrid +
-                ", fromGrid=" + fromGrid +
-                ", fromPV=" + fromPV +
-                ", totalConsumption=" + totalConsumption +
-                '}';
-    }
 }

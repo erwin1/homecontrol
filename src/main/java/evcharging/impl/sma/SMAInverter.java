@@ -2,19 +2,21 @@ package evcharging.impl.sma;
 
 import evcharging.services.ElectricityMeter;
 import evcharging.services.MeterReading;
-import evcharging.services.PowerValues;
+import evcharging.services.MeterData;
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.scheduler.Scheduled;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.annotation.PreDestroy;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
 import java.io.*;
 import java.net.URLConnection;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
@@ -32,7 +34,13 @@ public class SMAInverter implements ElectricityMeter {
     @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD")
     String inverterPassword;
 
-    private String sid;
+    String sid;
+
+    MeterReading currentMonth15minUsagePeak;
+
+    void onStart(@Observes StartupEvent ev) {
+        checkCurrentMonth15minPeak();
+    }
 
     @PreDestroy
     public void preDestroy() {
@@ -41,7 +49,51 @@ public class SMAInverter implements ElectricityMeter {
     }
 
     @Override
-    public PowerValues getCurrentValues() {
+    public MeterData getCurrentData() {
+        SMAValues smaValues = getCurrentSMAValues();
+
+        ZonedDateTime startOfPeriod = ZonedDateTime.now();
+        startOfPeriod = startOfPeriod.minusMinutes(startOfPeriod.getMinute() % 15).withSecond(0).withNano(0);
+
+        long outAtStartOfPeriod = getConsumptionMeterReadingAt(startOfPeriod);
+        long out = getCurrentConsumptionMeterReading();
+
+        int avg = (int) ((out - outAtStartOfPeriod) * 4);
+
+        return new MeterData(smaValues.getFromGrid() - smaValues.getToGrid(), avg, out);
+    }
+
+    @Override
+    public MeterReading getCurrentMonthPeak() {
+        return currentMonth15minUsagePeak;
+    }
+
+    @Scheduled(cron="0 20 0 * * ?")
+    public void checkCurrentMonth15minPeak() {
+        ZonedDateTime startTime = ZonedDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        ZonedDateTime endTime = ZonedDateTime.now();
+        MeterReading highestReading = new MeterReading(startTime, 0);
+
+        while(startTime.isBefore(endTime)) {
+            List<MeterReading> readings = getFromGridUsagePer15minBetween(startTime, startTime.plusDays(1));
+            for (MeterReading reading : readings) {
+                if (reading.getValue() > highestReading.getValue()) {
+                    highestReading = reading;
+                }
+            }
+            startTime = startTime.plusDays(1);
+        }
+        if (highestReading.getValue() != 0) {
+            currentMonth15minUsagePeak = highestReading;
+        }
+        if (currentMonth15minUsagePeak != null) {
+            LOGGER.log(Level.INFO, "current month 15min peak = {0} at {1}", new Object[]{currentMonth15minUsagePeak.getValue(), currentMonth15minUsagePeak.getTimestamp()});
+        } else {
+            LOGGER.log(Level.INFO, "no known current month 15min peak");
+        }
+    }
+
+    SMAValues getCurrentSMAValues() {
         try {
             return readInternal();
         } catch (SMAAuthException e) {
@@ -54,8 +106,7 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    @Override
-    public long getConsumptionMeterReadingAt(ZonedDateTime timestamp) {
+    long getConsumptionMeterReadingAt(ZonedDateTime timestamp) {
         if (ZonedDateTime.now().toEpochSecond() - timestamp.toEpochSecond() <= 5) {
             LOGGER.fine("Waiting 5s to get a better reading");
             try {
@@ -76,8 +127,7 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    @Override
-    public long getCurrentConsumptionMeterReading() {
+    long getCurrentConsumptionMeterReading() {
         try {
             return getAbsoluteFromGridMeterReadingInternal();
         } catch (SMAAuthException e) {
@@ -90,8 +140,7 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    @Override
-    public List<MeterReading> getFromGridUsagePer15minBetween(ZonedDateTime startTime, ZonedDateTime endTime) {
+    List<MeterReading> getFromGridUsagePer15minBetween(ZonedDateTime startTime, ZonedDateTime endTime) {
         try {
             return getFromGridUsagePer15minBetweenInternal(startTime, endTime);
         } catch (SMAAuthException e) {
@@ -246,7 +295,7 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    public PowerValues readInternal() throws SMAAuthException {
+    public SMAValues readInternal() throws SMAAuthException {
         try {
             if (sid == null) {
                 sid = authenticate();
@@ -294,7 +343,7 @@ public class SMAInverter implements ElectricityMeter {
                 fromPV = Integer.parseInt(x);
             }
 
-            return new PowerValues(toGrid, fromGrid, fromPV, fromGrid+fromPV-toGrid);
+            return new SMAValues(toGrid, fromGrid, fromPV, fromGrid+fromPV-toGrid);
 
         } catch (SMAAuthException e) {
             throw e;

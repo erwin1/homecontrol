@@ -36,13 +36,13 @@ public class StatusResource {
     public TemplateInstance status() {
         return status
                 .data("chargerState", charger.getState().toString())
-                .data("powerValues", meter.getCurrentValues())
+                .data("powerValues", meter.getCurrentData())
                 .data("mode", configService.getCurrentMode())
                 .data("max15minpeak", configService.getMax15minPeak())
                 .data("actualmax15minpeak", powerEstimationService.getCurrentMonth15minPeak())
                 .data("min15minpeak", configService.getMin15minPeak())
                 .data("peakstrategy", configService.getPeakStrategy())
-                .data("currentmonth15minpeak", peakService.getCurrentMonth15minUsagePeak())
+                .data("currentmonth15minpeak", meter.getCurrentMonthPeak())
                 .data("chargelimitgrid", configService.getChargeLimitFromGrid());
     }
 

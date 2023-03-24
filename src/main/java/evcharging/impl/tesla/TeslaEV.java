@@ -48,19 +48,6 @@ public class TeslaEV implements EV {
     }
 
     @Override
-    public boolean isChargingComplete() {
-        try {
-            if (chargeState == null) {
-                chargeState = teslaService.getChargeState();
-            }
-            return chargeState.getBattery_level() >= chargeState.getCharge_limit_soc();
-        } catch (TeslaException e) {
-            notificationService.sendNotification("could not get tesla charge state "+e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
     public int getCurrentBatteryLevel() {
         try {
             if (chargeState == null) {

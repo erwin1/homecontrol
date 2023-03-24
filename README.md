@@ -3,7 +3,16 @@
 This project automates EV charging using the following constraints:
 - use as much self-produced solar energy as possible
 - limit grid usage at peak hours
-- keep the "15 min peak" as low as possible (Belgian 'capaciteitstarief')
+- charge using power grid in off hours until a configured battery level 
+- but keep the "15 minute peak" as low as possible (Belgian 'capaciteitstarief')
+
+Example: using the following settings
+- Mode: `OPTIMAL`
+- Charge limit from grid: `50%`
+- Peak strategy: `DYNAMIC_UNLIMITED`
+
+The EV will charge up until 50% using grid power, dynmically limiting the 15 minute peak value to this month's current
+peak value (so charging won't account for extra peak value). And next to that, use solar power only to charge the remaining capacity. 
 
 On a high level, it works like this:
 
@@ -25,7 +34,7 @@ useopt --> charge
 
 The correct functioning of this project relies on these concepts:
 - EVCharger: to check if the car is connected
-- ElectricityMeter: the retrieve current and historical power meter values
+- ElectricityMeter: to retrieve current power meter data
 - EV (electric vehicle): to start and stop charging and to change charging power
 
 All three are abstracted in interfaces:
@@ -33,14 +42,13 @@ All three are abstracted in interfaces:
 ```mermaid
 classDiagram
     class EV {
-        +boolean isChargingComplete()
-        +requestPowerConsumptionChange(power)
+        +getCurrentBatteryLevel()
+        +requestPowerConsumptionChange(power, limit)
     }
     
     class ElectricityMeter {
-      +PowerValues getCurrentValues()
-      +long getConsumptionMeterReadingAt(timestamp)
-      +long getCurrentConsumptionMeterReading()
+      +MeterData getCurrentValues()
+      +MeterReading getCurrentMonthPeak(timestamp)
     }
 
     class EVCharger {
