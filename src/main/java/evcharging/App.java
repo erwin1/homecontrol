@@ -35,8 +35,7 @@ public class App {
     private EVCharger.State chargerState;
 
     @Inject
-    private javax.enterprise.event.Event<EVCharger.State> chargerEvents;
-
+    javax.enterprise.event.Event<EVCharger.State> chargerEvents;
 
 
 

@@ -3,6 +3,7 @@ package evcharging.impl.sma;
 import evcharging.services.ElectricityMeter;
 import evcharging.services.MeterReading;
 import evcharging.services.MeterData;
+import io.quarkus.arc.lookup.LookupIfProperty;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
 import io.vertx.core.json.JsonArray;
@@ -26,6 +27,7 @@ import java.util.logging.Logger;
  * SMA implementation of the ElectricityMeter interface.
  * It uses a reverse engineered version of the SMA inverter's local web admin UI .
  */
+@LookupIfProperty(name = "evcharging.meter", stringValue = "sma", lookupIfMissing = false)
 @ApplicationScoped
 public class SMAInverter implements ElectricityMeter {
     public static final Logger LOGGER = Logger.getLogger(SMAInverter.class.getName());
@@ -33,13 +35,17 @@ public class SMAInverter implements ElectricityMeter {
     String inverterIp;
     @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD")
     String inverterPassword;
+    @ConfigProperty(name = "evcharging.meter", defaultValue = "hwep1")
+    String meter;
 
     String sid;
 
     MeterReading currentMonth15minUsagePeak;
 
     void onStart(@Observes StartupEvent ev) {
-        checkCurrentMonth15minPeak();
+        if ("sma".equals(meter)) {
+            checkCurrentMonth15minPeak();
+        }
     }
 
     @PreDestroy
@@ -85,6 +91,7 @@ public class SMAInverter implements ElectricityMeter {
         }
         if (highestReading.getValue() != 0) {
             currentMonth15minUsagePeak = highestReading;
+            currentMonth15minUsagePeak.setValue(currentMonth15minUsagePeak.getValue() * 4);
         }
         if (currentMonth15minUsagePeak != null) {
             LOGGER.log(Level.INFO, "current month 15min peak = {0} at {1}", new Object[]{currentMonth15minUsagePeak.getValue(), currentMonth15minUsagePeak.getTimestamp()});

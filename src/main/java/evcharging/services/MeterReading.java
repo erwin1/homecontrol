@@ -27,7 +27,4 @@ public class MeterReading {
         this.value = value;
     }
 
-    public int getValueInW() {
-        return getValue() * 4;
-    }
 }

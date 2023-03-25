@@ -6,7 +6,7 @@ import evcharging.services.NotificationService;
 import io.quarkus.scheduler.Scheduled;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.text.MessageFormat;
 import java.time.ZonedDateTime;
@@ -22,7 +22,7 @@ public class PeakService {
     public static final Logger LOGGER = Logger.getLogger(PeakService.class.getName());
 
     @Inject
-    ElectricityMeter meter;
+    Instance<ElectricityMeter> meter;
 
     @Inject
     NotificationService notificationService;
@@ -33,7 +33,7 @@ public class PeakService {
     @Scheduled(cron="0 8,23,38,53 * * * ?")
     void run() {
         LOGGER.log(Level.INFO, "Checking peak");
-        MeterData meterData = meter.getCurrentData();
+        MeterData meterData = meter.get().getCurrentData();
         ZonedDateTime startOfPeriod = ZonedDateTime.now();
         startOfPeriod = startOfPeriod.minusMinutes(startOfPeriod.getMinute() % 15).withSecond(0).withNano(0);
         ZonedDateTime now = ZonedDateTime.now();

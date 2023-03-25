@@ -5,6 +5,7 @@ import evcharging.services.MeterData;
 import evcharging.services.ElectricityMeter;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.time.ZonedDateTime;
 import java.util.logging.Logger;
@@ -15,7 +16,7 @@ public class PowerEstimationService {
     public static final Logger LOGGER = Logger.getLogger(PowerEstimationService.class.getName());
 
     @Inject
-    ElectricityMeter meter;
+    Instance<ElectricityMeter> meter;
 
     @Inject
     ConfigService configService;
@@ -33,7 +34,7 @@ public class PowerEstimationService {
         startOfPeriod = startOfPeriod.minusMinutes(startOfPeriod.getMinute() % 15).withSecond(0).withNano(0);
         long startOfPeriodEpoch = startOfPeriod.toEpochSecond();
 
-        MeterData meterData = meter.getCurrentData();
+        MeterData meterData = meter.get().getCurrentData();
         long nowEpoch = ZonedDateTime.now().toEpochSecond();
         int usageInPeriodWh = meterData.getActivePowerAverageW() / 4;
 
@@ -59,7 +60,7 @@ public class PowerEstimationService {
     }
 
     private int calculatePowerDifferenceForPVOnly() {
-        MeterData meterData = meter.getCurrentData();
+        MeterData meterData = meter.get().getCurrentData();
         int differenceW = -meterData.getActivePowerW();
         LOGGER.info("difference PV power "+differenceW+"W");
         return differenceW;
@@ -68,11 +69,11 @@ public class PowerEstimationService {
     public int getCurrentMonth15minPeak() {
         if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)
             || configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_UNLIMITED)) {
-            MeterReading currentMonth15minUsagePeak = meter.getCurrentMonthPeak();
+            MeterReading currentMonth15minUsagePeak = meter.get().getCurrentMonthPeak();
             if (currentMonth15minUsagePeak != null) {
                 ZonedDateTime now = ZonedDateTime.now();
                 if (now.getMonth() == currentMonth15minUsagePeak.getTimestamp().getMonth()) {
-                    int currentPeak = Math.max(currentMonth15minUsagePeak.getValueInW(), configService.getMin15minPeak());
+                    int currentPeak = Math.max(currentMonth15minUsagePeak.getValue(), configService.getMin15minPeak());
                     if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)) {
                         return Math.min(currentPeak, configService.getMax15minPeak());
                     } else {

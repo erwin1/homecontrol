@@ -28,7 +28,7 @@
     </tr>
     <tr>
         <td>Current month 15 min peak</td>
-        <td>{currentmonth15minpeak.valueInW}W<br/>{currentmonth15minpeak.timestamp}</td>
+        <td>{currentmonth15minpeak.value}W<br/>{currentmonth15minpeak.timestamp}</td>
     </tr>
     <tr>
         <td>Peak strategy</td>
@@ -47,20 +47,16 @@
         <td>{chargelimitgrid}%</td>
     </tr>
     <tr>
-        <td>From grid</td>
-        <td>{meterData.fromGrid}W</td>
+        <td>Active power</td>
+        <td>{meterData.activePowerW}W</td>
     </tr>
     <tr>
-        <td>To grid</td>
-        <td>{meterData.toGrid}W</td>
+        <td>Active power average</td>
+        <td>{meterData.activePowerAverageW}W</td>
     </tr>
     <tr>
-        <td>From PV</td>
-        <td>{meterData.fromPV}W</td>
-    </tr>
-    <tr>
-        <td>Total consumption</td>
-        <td>{meterData.totalConsumption}W</td>
+        <td>Total power export</td>
+        <td>{meterData.totalPowerExportWH}Wh</td>
     </tr>
 </table>
 

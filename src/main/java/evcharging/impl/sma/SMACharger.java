@@ -17,11 +17,11 @@ import java.net.URLConnection;
 @ApplicationScoped
 public class SMACharger implements EVCharger {
     @ConfigProperty(name = "EVCHARGING_CHARGER_IP")
-    private String chargerIp;
+    String chargerIp;
     @ConfigProperty(name = "EVCHARGING_CHARGER_USERNAME")
-    private String chargerUserName;
+    String chargerUserName;
     @ConfigProperty(name = "EVCHARGING_CHARGER_PASSWORD")
-    private String chargerPassword;
+    String chargerPassword;
 
     private String token;
 

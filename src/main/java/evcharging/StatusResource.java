@@ -6,6 +6,7 @@ import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
 
 
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -17,13 +18,10 @@ public class StatusResource {
     @Inject
     SMACharger charger;
     @Inject
-    ElectricityMeter meter;
+    Instance<ElectricityMeter> meter;
 
     @Inject
     ConfigService configService;
-
-    @Inject
-    PeakService peakService;
 
     @Inject
     PowerEstimationService powerEstimationService;
@@ -36,13 +34,13 @@ public class StatusResource {
     public TemplateInstance status() {
         return status
                 .data("chargerState", charger.getState().toString())
-                .data("powerValues", meter.getCurrentData())
+                .data("meterData", meter.get().getCurrentData())
                 .data("mode", configService.getCurrentMode())
                 .data("max15minpeak", configService.getMax15minPeak())
                 .data("actualmax15minpeak", powerEstimationService.getCurrentMonth15minPeak())
                 .data("min15minpeak", configService.getMin15minPeak())
                 .data("peakstrategy", configService.getPeakStrategy())
-                .data("currentmonth15minpeak", meter.getCurrentMonthPeak())
+                .data("currentmonth15minpeak", meter.get().getCurrentMonthPeak())
                 .data("chargelimitgrid", configService.getChargeLimitFromGrid());
     }
 

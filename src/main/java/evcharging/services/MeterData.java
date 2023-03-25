@@ -20,4 +20,7 @@ public class MeterData {
         return activePowerAverageW;
     }
 
+    public long getTotalPowerExportWH() {
+        return totalPowerExportWH;
+    }
 }
