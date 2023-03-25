@@ -58,7 +58,9 @@ classDiagram
 
 By default, they are implemented by
 - EVCharger: connecting to an SMA charger using it's web admin UI (local IP).
-- ElectricityMeter:  connecting to an SMA Inverter (Sunny Boy) using it's web admin UI (local IP).
+- ElectricityMeter: there are 2 choices:
+  - connecting to an SMA Inverter (Sunny Boy) using it's web admin UI (local IP).
+  - connecting to a [HomeWizard](https://www.homewizard.com/nl-be/shop/wi-fi-p1-meter/) Wi-Fi P1 meter ([local IP](https://homewizard-energy-api.readthedocs.io/endpoints.html#data-points-for-hwe-p1))
 - EV: connecting to the Tesla REST API
 
 These implementations need configuration (like credentials). More on that below.
@@ -116,9 +118,15 @@ And it allows to switch charging mode between 3 states:
 
 ### General
 
-There are 2 important inital configuration settings that are set in `config/application.properties`:
+There are a number of important inital configuration settings that are set in `config/application.properties`:
 
 - max15minpeak: EV charging will be limited so the 15 min average peak usage will be below this value
+- min15minpeak: the minimum power peak that can always be used
+- peakstrategy:
+  - `DYNAMIC_LIMITED`: Dynamic peak based on current month usage, but limited to the configured max peak (max15minpeak).
+  - `DYNAMIC_UNLIMITED`: Dynamic peak based on current month usage, not limited by the configured max peak (max15minpeak).
+  - `STATIC_LIMITED`: Limited to max15minpeak.
+- chargelimit-grid: Stop charging using grid power when this battery level is reached. Only solar energy will be used to charge the remaining capacity.
 - mode: 
   - `OFF`: do nothing
   - `PV_ONLY`: only use power that was otherwise injected to the grid
@@ -126,15 +134,49 @@ There are 2 important inital configuration settings that are set in `config/appl
 
 ```properties
 max15minpeak=4000
-mode=OPTIMAL
+min15minpeak=2500
+peakstrategy=DYNAMIC_LIMITED
+mode=PV_ONLY
+chargelimit-grid=75
 ```
 
-Both values can be changed at runtime at the status page (see above).
+These values can be changed at runtime at the status page (see above).
 
 Furthermore, it makes sense to enable FINE logging in the `.env` file:
 ```properties
 quarkus.log.level=INFO
 quarkus.log.category."evcharging".level=FINE
+```
+
+### ElectricityMeter implementation selection
+
+To use `SMAInverter` as the `ElectricityMeter` implementation, add this setting in `.env`:
+
+```properties
+evcharging.meter=sma
+```
+
+To use HomeWizard `HWEP1` as the `ElectricityMeter` implementation, add this setting in `.env`:
+
+```properties
+evcharging.meter=hwep1
+```
+
+### HomeWizard
+
+When using `HWEP1` as the `ElectricityMeter` implementation, this setting must be set in `.env`:
+
+```properties
+EVCHARGING_HWEP1_IP=x.x.x.x
+```
+
+### SMA Inverter
+
+When using `SMAInverter` as the `ElectricityMeter` implementation, these settings must be set in `.env`:
+
+```properties
+EVCHARGING_INVERTER_IP=x.x.x.x
+EVCHARGING_INVERTER_PASSWORD=...
 ```
 
 ### SMA Charger
@@ -145,15 +187,6 @@ When using `SMACharger` as the `EVCharger` implementation, these settings must b
 EVCHARGING_CHARGER_IP=x.x.x.x
 EVCHARGING_CHARGER_USERNAME=...
 EVCHARGING_CHARGER_PASSWORD=...
-```
-
-### SMA Inverter
-
-When using `SMAInverter` as the `ElectricityMeter` implementation, these settings must be set in `.env`:
-
-```properties
-EVCHARGING_INVERTER_IP=x.x.x.x
-EVCHARGING_INVERTER_PASSWORD=...
 ```
 
 ### Tesla
