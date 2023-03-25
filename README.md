@@ -99,13 +99,18 @@ It outputs current settings and power values:
 ```text
 EVCharging Status
 
-Operating mode	     OPTIMAL
-Max 15 min peak	     4000W
-Charger state	     Waiting
-From grid	         344W
-To grid	             0W
-From PV	             0W
-Total consumption	 344W
+Operating mode	            OPTIMAL
+Max 15 min peak	            3990W
+Min 15 min peak	            2500W
+Current month 15 min peak	4933W
+                            2023-03-05T18:00+01:00[Europe/Brussels]
+Peak strategy	            DYNAMIC_LIMITED
+Actual max 15 min peak	    3990W
+Charger state	            NotConnected
+Charge limit from grid	    75%
+Active power	            -190W
+Active power average	    249W
+Total power import	        121499745Wh
 ```
 
 And it allows to switch charging mode between 3 states:
