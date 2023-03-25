@@ -25,7 +25,7 @@ checklevel --above setting--> usepv
 calcpower --mode: PV_ONLY--> usepv
 calcpower --mode: OPTIMAL--> peakhours{In peak hours?}
 peakhours --no--> checklevel{Check current<br>battery level}
-checklevel --below setting--> useopt[Calculate charging power based on<br>maximum 15m peak usage]
+checklevel --below setting--> useopt[Calculate optimal charging<br>power based on maximum<br>15m peak usage]
 usepv --> charge{{Compare calculated power<br>with current EV charging power<br>and make change accordingly}}
 useopt --> charge
 ```
@@ -57,9 +57,9 @@ classDiagram
 ```
 
 By default, they are implemented by
-- EVCharger: connecting to an SMA charger using it's web admin UI (local IP).
+- EVCharger: connecting to an SMA charger using its web admin UI (local IP).
 - ElectricityMeter: there are 2 choices:
-  - connecting to an SMA Inverter (Sunny Boy) using it's web admin UI (local IP).
+  - connecting to an SMA Inverter (Sunny Boy) using its web admin UI (local IP).
   - connecting to a [HomeWizard](https://www.homewizard.com/nl-be/shop/wi-fi-p1-meter/) Wi-Fi P1 meter ([local IP](https://homewizard-energy-api.readthedocs.io/endpoints.html#data-points-for-hwe-p1))
 - EV: connecting to the Tesla REST API
 
