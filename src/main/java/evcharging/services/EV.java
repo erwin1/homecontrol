@@ -6,4 +6,6 @@ public interface EV {
 
     void requestPowerConsumptionChange(int powerW, Integer limit);
 
+    boolean openChargePortDoor();
+
 }

@@ -38,6 +38,7 @@ public class TeslaEV implements EV {
             try {
                 LOGGER.info((enable ? "re-enable" : "disable")+" scheduled charging");
                 teslaService.setScheduledCharging(enable, 1320);
+                teslaService.stopCharging();
                 this.chargeState = teslaService.getChargeState();
             } catch (TeslaException e) {
                 LOGGER.severe("could not change scheduled charging to "+enable);
@@ -65,8 +66,12 @@ public class TeslaEV implements EV {
         try {
             int powerDiffA = powerW / 220;
             if (powerDiffA == 0) {
-                LOGGER.log(Level.FINE, "no power difference. leave everything as it is.");
-                return;
+                if (powerW < 0) {
+                    powerDiffA = -1;
+                } else {
+                    LOGGER.log(Level.FINE, "no power difference. leave everything as it is.");
+                    return;
+                }
             }
 
             if (chargeState == null) {
@@ -104,7 +109,7 @@ public class TeslaEV implements EV {
                 if (!currentlyCharging) {
                     currentAmps = 0;
                     teslaService.startCharging();
-                    notificationService.sendNotification("Started charging at "+chargeAmps+"A");
+//                    notificationService.sendNotification("Started charging at "+chargeAmps+"A");
                 }
                 if (currentAmps != chargeAmps) {
                     teslaService.setChargingAmps(chargeAmps);
@@ -114,11 +119,21 @@ public class TeslaEV implements EV {
                 LOGGER.log(Level.INFO, "Tesla does not have to charge");
                 if (currentlyCharging) {
                     teslaService.stopCharging();
-                    notificationService.sendNotification("Stopped charging");
+//                    notificationService.sendNotification("Stopped charging");
                     teslaService.setChargingAmps(5);
                     chargeState = teslaService.getChargeState();
                 }
             }
+        } catch (TeslaException e) {
+            notificationService.sendNotification("could not contact tesla "+e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public boolean openChargePortDoor() {
+        try {
+            return teslaService.openChargePortDoor();
         } catch (TeslaException e) {
             notificationService.sendNotification("could not contact tesla "+e);
             throw new RuntimeException(e);

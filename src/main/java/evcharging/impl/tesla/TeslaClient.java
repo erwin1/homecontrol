@@ -28,13 +28,13 @@ public class TeslaClient {
             accessToken = getAccessToken(refreshToken);
         }
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/data_request/charge_state"))
+                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/vehicle_data"))
                 .header("Accept", "application/json")
                 .header("Authorization", "Bearer " + accessToken)
                 .GET()
                 .build();
         JsonObject responseObject = sendRequest(request);
-        JsonObject rsp = responseObject.getJsonObject("response");
+        JsonObject rsp = responseObject.getJsonObject("response").getJsonObject("charge_state");
 
         ChargeState state = new ChargeState();
         state.setCharge_amps(rsp.getInteger("charge_amps"));
@@ -45,6 +45,22 @@ public class TeslaClient {
         state.setCharge_limit_soc(rsp.getInteger("charge_limit_soc"));
         state.setBattery_level(rsp.getInteger("battery_level"));
         return state;
+    }
+
+    public boolean openChargePortDoor() throws TeslaException {
+        if (accessToken == null) {
+            accessToken = getAccessToken(refreshToken);
+        }
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/charge_port_door_open"))
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build();
+        JsonObject responseObject = sendRequest(request);
+        boolean result = responseObject.getJsonObject("response").getBoolean("result");
+        LOGGER.log(Level.INFO, "charge poort door open. result = {0}", result);
+        return result;
     }
 
     public boolean setChargingAmps(int amps) throws TeslaException {
@@ -170,4 +186,36 @@ public class TeslaClient {
 //            System.out.println("responseObject = " + responseObject);
         return responseObject;
     }
+
+
+    public void getVehicles() throws TeslaException {
+        if (accessToken == null) {
+            accessToken = getAccessToken(refreshToken);
+        }
+        System.out.println("accessToken = " + accessToken);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/api/1/vehicles"))
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .GET()
+                .build();
+        JsonObject responseObject = sendRequest(request);
+        System.out.println(responseObject);
+    }
+
+    public void getVehicle(String id) throws TeslaException {
+        if (accessToken == null) {
+            accessToken = getAccessToken(refreshToken);
+        }
+        System.out.println("accessToken = " + accessToken);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/api/1/vehicles/"+id))
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .GET()
+                .build();
+        JsonObject responseObject = sendRequest(request);
+        System.out.println(responseObject);
+    }
+    
 }

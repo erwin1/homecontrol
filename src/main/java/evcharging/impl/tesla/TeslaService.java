@@ -71,6 +71,16 @@ public class TeslaService {
         }
     }
 
+    @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
+    public boolean openChargePortDoor() throws TeslaException {
+        try {
+            return teslaClient.openChargePortDoor();
+        } catch (TeslaException e) {
+            handleTeslaException(e);
+            throw e;
+        }
+    }
+
     @Retry(maxRetries = 3, delay = 10, delayUnit = ChronoUnit.SECONDS)
     public boolean stopCharging() throws TeslaException {
         try {
