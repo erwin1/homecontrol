@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>EVCharging Status</title>
+    <title>EVCharging config</title>
     <style>
         @media screen and (max-width: 1000pt) {
             :root {
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-<h1>EVCharging Status</h1>
+<h1>EVCharging config</h1>
 <table cellpadding="10">
     <tr>
         <td>Operating mode</td>
@@ -39,24 +39,8 @@
         <td>{actualmax15minpeak}W</td>
     </tr>
     <tr>
-        <td>Charger state</td>
-        <td>{chargerState}</td>
-    </tr>
-    <tr>
         <td>Charge limit from grid</td>
         <td>{chargelimitgrid}%</td>
-    </tr>
-    <tr>
-        <td>Active power</td>
-        <td>{meterData.activePowerW}W</td>
-    </tr>
-    <tr>
-        <td>Active power average</td>
-        <td>{meterData.activePowerAverageW}W</td>
-    </tr>
-    <tr>
-        <td>Total power export</td>
-        <td>{meterData.totalPowerExportWH}Wh</td>
     </tr>
 </table>
 
@@ -64,7 +48,7 @@
 <br />
 <br />
 
-<form action="/status/changemode" method="post">
+<form action="/config/changemode" method="post">
     Mode: <select name="mode"><option{#if mode.toString() == "OFF"} selected="selected"{/if}>OFF</option>
     <option{#if mode.toString() == "OPTIMAL"} selected="selected"{/if}>OPTIMAL</option>
     <option{#if mode.toString() == "PV_ONLY"} selected="selected"{/if}>PV_ONLY</option></select>
@@ -74,7 +58,7 @@
 <br />
 <br />
 
-<form action="/status/changepeakstrategy" method="post">
+<form action="/config/changepeakstrategy" method="post">
     Peak strategy: <select name="strategy">
     <option{#if peakstrategy.toString() == "DYNAMIC_LIMITED"} selected="selected"{/if}>DYNAMIC_LIMITED</option>
     <option{#if peakstrategy.toString() == "DYNAMIC_UNLIMITED"} selected="selected"{/if}>DYNAMIC_UNLIMITED</option>
@@ -85,8 +69,10 @@
 <br />
 <br />
 
-<form action="/status/changechargelimitfromgrid" method="post">
+<form action="/config/changechargelimitfromgrid" method="post">
     Charge limit from grid: <select name="limit">
+    <option value="30"{#if chargelimitgrid == 30} selected="selected"{/if}>30%</option>
+    <option value="40"{#if chargelimitgrid == 40} selected="selected"{/if}>40%</option>
     <option value="50"{#if chargelimitgrid == 50} selected="selected"{/if}>50%</option>
     <option value="60"{#if chargelimitgrid == 60} selected="selected"{/if}>60%</option>
     <option value="70"{#if chargelimitgrid == 70} selected="selected"{/if}>70%</option>

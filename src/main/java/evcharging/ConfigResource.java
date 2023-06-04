@@ -5,7 +5,6 @@ import evcharging.services.ElectricityMeter;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
 
-
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.ws.rs.*;
@@ -13,8 +12,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.net.URI;
 
-@Path("/status")
-public class StatusResource {
+@Path("/config")
+public class ConfigResource {
     @Inject
     SMACharger charger;
     @Inject
@@ -27,14 +26,12 @@ public class StatusResource {
     PowerEstimationService powerEstimationService;
 
     @Inject
-    Template status;
+    Template config;
 
     @GET
     @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance status() {
-        return status
-                .data("chargerState", charger.getState().toString())
-                .data("meterData", meter.get().getCurrentData())
+    public TemplateInstance config() {
+        return config
                 .data("mode", configService.getCurrentMode())
                 .data("max15minpeak", configService.getMax15minPeak())
                 .data("actualmax15minpeak", powerEstimationService.getCurrentMonth15minPeak())
@@ -49,7 +46,8 @@ public class StatusResource {
     public Response changeMode(@FormParam("mode") Mode mode) {
         System.out.println("Have to change mode to "+mode);
         configService.setCurrentMode(mode);
-        return Response.seeOther(URI.create("/status")).build();
+        configService.persist();
+        return Response.seeOther(URI.create("/config")).build();
     }
 
     @POST
@@ -57,7 +55,8 @@ public class StatusResource {
     public Response changePeakStrategy(@FormParam("strategy") PeakStrategy peakStrategy) {
         System.out.println("Have to change strategy to "+peakStrategy);
         configService.setPeakStrategy(peakStrategy);
-        return Response.seeOther(URI.create("/status")).build();
+        configService.persist();
+        return Response.seeOther(URI.create("/config")).build();
     }
 
     @POST
@@ -65,7 +64,8 @@ public class StatusResource {
     public Response changeChargeLimitFromGrid(@FormParam("limit") int limit) {
         System.out.println("Have to charge limit to "+limit);
         configService.setChargeLimitFromGrid(limit);
-        return Response.seeOther(URI.create("/status")).build();
+        configService.persist();
+        return Response.seeOther(URI.create("/config")).build();
     }
 
 }

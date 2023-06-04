@@ -3,12 +3,13 @@ package evcharging;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Properties;
 
 @ApplicationScoped
 public class ConfigService {
-
-    //TODO persist changes in config/application.properties
-
     @ConfigProperty(name = "max15minpeak")
     int max15minPeak;
 
@@ -62,5 +63,19 @@ public class ConfigService {
 
     public void setChargeLimitFromGrid(int chargeLimitFromGrid) {
         this.chargeLimitFromGrid = chargeLimitFromGrid;
+    }
+
+    public void persist() {
+        try {
+            Properties properties = new Properties();
+            properties.load(new FileReader("config/application.properties"));
+            System.out.println("properties = " + properties);
+            properties.setProperty("chargelimit-grid", String.valueOf(chargeLimitFromGrid));
+            properties.setProperty("peakstrategy", String.valueOf(peakStrategy));
+            properties.setProperty("mode", String.valueOf(currentMode));
+            properties.store(new FileWriter("config/application.properties"), "config changed by app");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
