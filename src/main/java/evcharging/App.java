@@ -3,6 +3,7 @@ package evcharging;
 import evcharging.impl.sma.SMACharger;
 import evcharging.services.EV;
 import evcharging.services.EVCharger;
+import evcharging.services.NotificationService;
 import io.quarkus.runtime.Startup;
 import io.quarkus.scheduler.Scheduled;
 
@@ -32,12 +33,13 @@ public class App {
     @Inject
     EV ev;
 
+    @Inject
+    NotificationService notificationService;
+
     private EVCharger.State chargerState;
 
     @Inject
     javax.enterprise.event.Event<EVCharger.State> chargerEvents;
-
-
 
     private boolean inPeakHours() {
         LocalDateTime now = LocalDateTime.now();
@@ -86,8 +88,13 @@ public class App {
             }
         }
 
-        int powerDifference = powerEstimationService.calculateCurrentPowerDifference(mode);
-        ev.requestPowerConsumptionChange(powerDifference, limit);
+        try {
+            int powerDifference = powerEstimationService.calculateCurrentPowerDifference(mode);
+            ev.requestPowerConsumptionChange(powerDifference, limit);
+        }catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "error in EVCharging", e);
+            notificationService.sendNotification("Error in EV charging "+e);
+        }
     }
 
     private void fireEVChargerStateEventIfNeeded(EVCharger.State state) {
