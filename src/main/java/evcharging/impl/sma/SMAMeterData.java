@@ -1,19 +1,17 @@
 package evcharging.impl.sma;
 
-public class SMAValues {
+public class SMAMeterData {
     private int toGrid;
     private int fromGrid;
     private int fromPV;
-    private int totalConsumption;
 
-    public SMAValues() {
+    public SMAMeterData() {
     }
 
-    public SMAValues(int toGrid, int fromGrid, int fromPV, int totalConsumption) {
+    public SMAMeterData(int toGrid, int fromGrid, int fromPV) {
         this.toGrid = toGrid;
         this.fromGrid = fromGrid;
         this.fromPV = fromPV;
-        this.totalConsumption = totalConsumption;
     }
 
     public int getToGrid() {
@@ -38,14 +36,6 @@ public class SMAValues {
 
     public void setFromPV(int fromPV) {
         this.fromPV = fromPV;
-    }
-
-    public int getTotalConsumption() {
-        return totalConsumption;
-    }
-
-    public void setTotalConsumption(int totalConsumption) {
-        this.totalConsumption = totalConsumption;
     }
 
 }

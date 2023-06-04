@@ -6,9 +6,11 @@ import evcharging.services.MeterReading;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.vertx.core.json.JsonObject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.faulttolerance.Retry;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 
 @LookupIfProperty(name = "evcharging.meter", stringValue = "hwep1", lookupIfMissing = true)
 @ApplicationScoped
@@ -24,7 +27,8 @@ public class HWEP1 implements ElectricityMeter {
     String ip;
 
     @Override
-    public MeterData getCurrentData() {
+    @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
+    public MeterData getLivePowerData() {
         JsonObject responseObject = null;
         try {
             responseObject = getData();
@@ -33,13 +37,39 @@ public class HWEP1 implements ElectricityMeter {
         }
 
         MeterData meterData = new MeterData(responseObject.getInteger("active_power_w"),
-                responseObject.getInteger("active_power_average_w"),
-                (long)(responseObject.getDouble("total_power_import_kwh").doubleValue() * 1000));
+                responseObject.getInteger("active_power_average_w"));
 
         return meterData;
     }
 
+    @Retry(maxRetries = 10, delay = 3, delayUnit = ChronoUnit.SECONDS)
+    public HWMeterData getCurrentHWData() {
+        JsonObject responseObject = null;
+        try {
+            responseObject = getData();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        HWMeterData data = new HWMeterData();
+
+        data.setTotal_power_import_kwh(new BigDecimal(responseObject.getString("total_power_import_kwh")));
+        data.setTotal_power_import_t1_kwh(new BigDecimal(responseObject.getString("total_power_import_t1_kwh")));
+        data.setTotal_power_import_t2_kwh(new BigDecimal(responseObject.getString("total_power_import_t2_kwh")));
+        data.setTotal_power_export_kwh(new BigDecimal(responseObject.getString("total_power_export_kwh")));
+        data.setTotal_power_export_t1_kwh(new BigDecimal(responseObject.getString("total_power_export_t1_kwh")));
+        data.setTotal_power_export_t2_kwh(new BigDecimal(responseObject.getString("total_power_export_t2_kwh")));
+        data.setActive_power_w(new BigDecimal(responseObject.getString("active_power_w")));
+        data.setActive_power_average_w(new BigDecimal(responseObject.getString("active_power_average_w")));
+        data.setMontly_power_peak_w(new BigDecimal(responseObject.getString("montly_power_peak_w")));
+        data.setMontly_power_peak_timestamp(responseObject.getString("montly_power_peak_timestamp"));
+        data.setTotal_gas_m3(new BigDecimal(responseObject.getString("total_gas_m3")));
+
+        return data;
+    }
+
     @Override
+    @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public MeterReading getCurrentMonthPeak() {
         JsonObject responseObject = null;
         try {

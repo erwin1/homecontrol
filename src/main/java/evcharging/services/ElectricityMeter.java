@@ -2,7 +2,7 @@ package evcharging.services;
 
 public interface ElectricityMeter {
 
-    MeterData getCurrentData();
+    MeterData getLivePowerData();
 
     MeterReading getCurrentMonthPeak();
 

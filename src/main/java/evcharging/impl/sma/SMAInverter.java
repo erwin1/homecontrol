@@ -15,9 +15,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import java.io.*;
 import java.net.URLConnection;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
@@ -43,9 +41,9 @@ public class SMAInverter implements ElectricityMeter {
     MeterReading currentMonth15minUsagePeak;
 
     void onStart(@Observes StartupEvent ev) {
-        if ("sma".equals(meter)) {
+//        if ("sma".equals(meter)) {
             checkCurrentMonth15minPeak();
-        }
+//        }
     }
 
     @PreDestroy
@@ -55,18 +53,18 @@ public class SMAInverter implements ElectricityMeter {
     }
 
     @Override
-    public MeterData getCurrentData() {
-        SMAValues smaValues = getCurrentSMAValues();
+    public MeterData getLivePowerData() {
+        SMAMeterData smaValues = getLiveSMAPowerData();
 
         ZonedDateTime startOfPeriod = ZonedDateTime.now();
         startOfPeriod = startOfPeriod.minusMinutes(startOfPeriod.getMinute() % 15).withSecond(0).withNano(0);
 
         long outAtStartOfPeriod = getConsumptionMeterReadingAt(startOfPeriod);
-        long out = getCurrentConsumptionMeterReading();
+        long out = getLivePowerMeterReading();
 
         int avg = (int) ((out - outAtStartOfPeriod) * 4);
 
-        return new MeterData(smaValues.getFromGrid() - smaValues.getToGrid(), avg, out);
+        return new MeterData(smaValues.getFromGrid() - smaValues.getToGrid(), avg);
     }
 
     @Override
@@ -100,13 +98,13 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    SMAValues getCurrentSMAValues() {
+    public SMAMeterData getLiveSMAPowerData() {
         try {
-            return readInternal();
+            return getLiveSMAPowerDataInternal();
         } catch (SMAAuthException e) {
             sid = null;
             try {
-                return readInternal();
+                return getLiveSMAPowerDataInternal();
             } catch (SMAAuthException ex) {
                 throw new RuntimeException(ex.toString());
             }
@@ -134,13 +132,26 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    long getCurrentConsumptionMeterReading() {
+    long getLivePowerMeterReading() {
         try {
-            return getAbsoluteFromGridMeterReadingInternal();
+            return getLivePowerMeterReadingInternal();
         } catch (SMAAuthException e) {
             sid = null;
             try {
-                return getAbsoluteFromGridMeterReadingInternal();
+                return getLivePowerMeterReadingInternal();
+            } catch (SMAAuthException ex) {
+                throw new RuntimeException(ex.toString());
+            }
+        }
+    }
+
+    public long getPVProductionMeterReading() {
+        try {
+            return getAbsolutePVMeterReadingInternal();
+        } catch (SMAAuthException e) {
+            sid = null;
+            try {
+                return getAbsolutePVMeterReadingInternal();
             } catch (SMAAuthException ex) {
                 throw new RuntimeException(ex.toString());
             }
@@ -161,10 +172,6 @@ public class SMAInverter implements ElectricityMeter {
     }
     List<MeterReading> getFromGridUsagePer15minBetweenInternal(ZonedDateTime startTime, ZonedDateTime endTime) throws SMAAuthException {
         return getMeterReadingsPer15minBetween("28736", startTime, endTime);
-    }
-
-    List<MeterReading> getMeterReadingsPVPer15minBetween(ZonedDateTime startTime, ZonedDateTime endTime) throws SMAAuthException {
-        return getMeterReadingsPer15minBetween("28672", startTime, endTime);
     }
 
     List<MeterReading> getMeterReadingsPer15minBetween(String key, ZonedDateTime startTime, ZonedDateTime endTime) throws SMAAuthException {
@@ -225,6 +232,68 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
+
+//    List<MeterReading> getMeterReadingsPVPerMonthBetween(ZonedDateTime startTime, ZonedDateTime endTime) throws SMAAuthException {
+//        return getHistoricalMeterReadings("28704", startTime, endTime);
+//    }
+
+//    List<MeterReading> getToGridReadingsPer15minBetween(ZonedDateTime startTime, ZonedDateTime endTime) throws SMAAuthException {
+//        return getHistoricalMeterReadings("28752", startTime, endTime);
+//    }
+
+//    List<MeterReading> getHistoricalMeterReadings(String key, ZonedDateTime startTime, ZonedDateTime endTime) throws SMAAuthException {
+//        try {
+//            if (sid == null) {
+//                sid = authenticate();
+//            }
+//            URLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/getLogger.json?sid="+sid);
+//            conn.setDoOutput(true);
+//            conn.setRequestProperty("Content-Type", "application/json");
+//            conn.setRequestProperty("Accept", "application/json");
+//
+//            long start = startTime.withZoneSameInstant(ZoneId.of("UTC")).toEpochSecond();
+//            long end = endTime.withZoneSameInstant(ZoneId.of("UTC")).toEpochSecond();
+//
+//            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+//            writer.write("{\"destDev\":[],\"key\":"+key+",\"tStart\":"+start+",\"tEnd\":"+end+"}");
+//            writer.flush();
+//
+//            String body = new String(conn.getInputStream().readAllBytes());
+//            conn.getInputStream().close();
+//
+//            JsonObject object = new JsonObject(body);
+//
+//            if (object.getString("err") != null) {
+//                throw new evcharging.impl.sma.SMAAuthException();
+//            }
+//
+//            int startValue = 0;
+//            long startTs = 0;
+//            JsonArray array = object.getJsonObject("result").getJsonArray("0199-xxxxx04E");
+//            List<MeterReading> list = new LinkedList<>();
+//            for(int i=0;i<array.size();i++) {
+//                long time = array.getJsonObject(i).getLong("t");
+//                String value = array.getJsonObject(i).getString("v", "0");
+//                long intValue = 0;
+//                if (value != null) {
+//                    intValue = Long.parseLong(value);
+//                }
+//                ZonedDateTime ts = ZonedDateTime.ofInstant(Instant.ofEpochSecond(time), ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("Europe/Brussels"));
+//                if (i + 1 < array.size()) {
+//                    long diff = Long.parseLong(array.getJsonObject(i+1).getString("v")) -  intValue;
+//                    list.add(new MeterReading(ts, (int)intValue));
+//                }
+//                startTs = time;
+//            }
+//            return list;
+//        } catch (SMAAuthException e) {
+//            throw e;
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
+
     long getAbsoluteFromGridMeterReadingAtTimestampInternal(ZonedDateTime timestamp) throws SMAAuthException {
         try {
             if (sid == null) {
@@ -261,8 +330,7 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-
-    long getAbsoluteFromGridMeterReadingInternal() throws SMAAuthException {
+    long getLivePowerMeterReadingInternal() throws SMAAuthException {
         try {
             if (sid == null) {
                 sid = authenticate();
@@ -302,7 +370,47 @@ public class SMAInverter implements ElectricityMeter {
         }
     }
 
-    public SMAValues readInternal() throws SMAAuthException {
+    long getAbsolutePVMeterReadingInternal() throws SMAAuthException {
+        try {
+            if (sid == null) {
+                sid = authenticate();
+            }
+            URLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/getAllOnlValues.json?sid="+sid);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "application/json");
+
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+            writer.write("{\"destDev\":[]}");
+            writer.flush();
+
+            String body = new String(conn.getInputStream().readAllBytes());
+            conn.getInputStream().close();
+
+//            System.out.println("BODY = "+body);
+
+            JsonObject object = new JsonObject(body);
+
+            if (object.getString("err") != null) {
+                throw new evcharging.impl.sma.SMAAuthException();
+            }
+
+            long reading = object.getJsonObject("result")
+                    .getJsonObject("0199-xxxxx04E")
+                    .getJsonObject("6400_00260100")
+                    .getJsonArray("1")
+                    .getJsonObject(0)
+                    .getLong("val", 0L);
+            return reading;
+
+        } catch (SMAAuthException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public SMAMeterData getLiveSMAPowerDataInternal() throws SMAAuthException {
         try {
             if (sid == null) {
                 sid = authenticate();
@@ -350,7 +458,7 @@ public class SMAInverter implements ElectricityMeter {
                 fromPV = Integer.parseInt(x);
             }
 
-            return new SMAValues(toGrid, fromGrid, fromPV, fromGrid+fromPV-toGrid);
+            return new SMAMeterData(toGrid, fromGrid, fromPV);
 
         } catch (SMAAuthException e) {
             throw e;

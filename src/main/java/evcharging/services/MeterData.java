@@ -4,12 +4,10 @@ package evcharging.services;
 public class MeterData {
     int activePowerW;
     int activePowerAverageW;
-    long totalPowerImportWH;
 
-    public MeterData(int activePowerW, int activePowerAverageW, long totalPowerImportWH) {
+    public MeterData(int activePowerW, int activePowerAverageW) {
         this.activePowerW = activePowerW;
         this.activePowerAverageW = activePowerAverageW;
-        this.totalPowerImportWH = totalPowerImportWH;
     }
 
     public int getActivePowerW() {
@@ -18,9 +16,5 @@ public class MeterData {
 
     public int getActivePowerAverageW() {
         return activePowerAverageW;
-    }
-
-    public long getTotalPowerImportWH() {
-        return totalPowerImportWH;
     }
 }
