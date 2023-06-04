@@ -44,7 +44,7 @@ public class App {
         if (now.getDayOfWeek().equals(DayOfWeek.SATURDAY) || now.getDayOfWeek().equals(DayOfWeek.SUNDAY)) {
             return false;
         }
-        if (now.getHour() >= 22 || now.getHour() < 6) {
+        if (now.getHour() >= 22 || now.getHour() < 7) {
             return false;
         }
         return true;
