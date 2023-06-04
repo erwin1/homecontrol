@@ -33,7 +33,7 @@ public class PeakService {
     @Scheduled(cron="0 8,23,38,53 * * * ?")
     void run() {
         LOGGER.log(Level.INFO, "Checking peak");
-        MeterData meterData = meter.get().getCurrentData();
+        MeterData meterData = meter.get().getLivePowerData();
         ZonedDateTime startOfPeriod = ZonedDateTime.now();
         startOfPeriod = startOfPeriod.minusMinutes(startOfPeriod.getMinute() % 15).withSecond(0).withNano(0);
         ZonedDateTime now = ZonedDateTime.now();
@@ -47,8 +47,10 @@ public class PeakService {
         int totalUsage = estimatedUsageInRemainingTime + usageInPeriodWh;
         LOGGER.log(Level.FINE, "Estimated peak in period: {0}W", totalUsage*4);
 
-        if ((totalUsage*4) > (configService.getMax15minPeak())) {
-            String message = MessageFormat.format("Potentially exceeding configured max peak: {0}W", totalUsage * 4);
+        int currentPeak = Math.max(meter.get().getCurrentMonthPeak().getValue(), configService.getMin15minPeak());
+
+        if ((totalUsage*4) > currentPeak) {
+            String message = MessageFormat.format("Potentially exceeding max peak: {0}W", totalUsage * 4);
             LOGGER.log(Level.SEVERE, message);
             notificationService.sendNotification(message);
         }
