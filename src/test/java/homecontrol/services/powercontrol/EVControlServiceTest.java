@@ -1,5 +1,6 @@
 package homecontrol.services.powercontrol;
 
+import homecontrol.metrics.MetricsLogger;
 import homecontrol.services.ev.EVException;
 import homecontrol.services.ev.EVState;
 import homecontrol.services.ev.ElectricVehicle;
@@ -20,6 +21,8 @@ public class EVControlServiceTest {
     private ElectricVehicle electricVehicle;
     @InjectMock
     private NotificationService notificationService;
+    @InjectMock
+    private MetricsLogger metricsLogger;
 
     @Inject
     private EVControlService evControlService;
