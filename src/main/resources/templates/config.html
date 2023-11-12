@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>[homecontrol] config</title>
+<!--    <style>-->
+<!--        @media screen and (max-width: 1000pt) {-->
+<!--            :root {-->
+<!--               zoom: 300%;-->
+<!--            }-->
+<!--        }-->
+<!--    </style>-->
+</head>
+<body>
+<h1>[homecontrol] config</h1>
+
+<form action="/config/save" method="post">
+    Mode: <select name="mode"><option{#if mode.toString() == "OFF"} selected="selected"{/if}>OFF</option>
+    <option{#if mode.toString() == "ON"} selected="selected"{/if}>ON</option>
+    </select>
+
+    <h2>Charging power settings</h2>
+    <pre>
+                <select name="batteryLevelX">
+    <option value="30"{#if batteryLevelX == 30} selected="selected"{/if}>30%</option>
+        <option value="40"{#if batteryLevelX == 40} selected="selected"{/if}>40%</option>
+        <option value="50"{#if batteryLevelX == 50} selected="selected"{/if}>50%</option>
+        <option value="60"{#if batteryLevelX == 60} selected="selected"{/if}>60%</option>
+        <option value="70"{#if batteryLevelX == 70} selected="selected"{/if}>70%</option>
+        <option value="75"{#if batteryLevelX == 75} selected="selected"{/if}>75%</option>
+        <option value="80"{#if batteryLevelX == 80} selected="selected"{/if}>80%</option>
+        <option value="85"{#if batteryLevelX == 85} selected="selected"{/if}>85%</option>
+        <option value="90"{#if batteryLevelX == 90} selected="selected"{/if}>90%</option>
+        <option value="95"{#if batteryLevelX == 95} selected="selected"{/if}>95%</option>
+        <option value="100"{#if batteryLevelX == 100} selected="selected"{/if}>100%</option>
+    </select>        <select name="batteryLevelY">
+    <option value="30"{#if batteryLevelY == 30} selected="selected"{/if}>30%</option>
+        <option value="40"{#if batteryLevelY == 40} selected="selected"{/if}>40%</option>
+        <option value="50"{#if batteryLevelY == 50} selected="selected"{/if}>50%</option>
+        <option value="60"{#if batteryLevelY == 60} selected="selected"{/if}>60%</option>
+        <option value="70"{#if batteryLevelY == 70} selected="selected"{/if}>70%</option>
+        <option value="75"{#if batteryLevelY == 75} selected="selected"{/if}>75%</option>
+        <option value="80"{#if batteryLevelY == 80} selected="selected"{/if}>80%</option>
+        <option value="85"{#if batteryLevelY == 85} selected="selected"{/if}>85%</option>
+        <option value="90"{#if batteryLevelY == 90} selected="selected"{/if}>90%</option>
+        <option value="95"{#if batteryLevelY == 95} selected="selected"{/if}>95%</option>
+        <option value="100"{#if batteryLevelY == 100} selected="selected"{/if}>100%</option>
+</select>
+
+0% | ------------- | ------------- | ------------- | 100%
+
+
+PEAK    <select name="p1"><option{#if p1.toString() == "EXP"} selected="selected"{/if}>EXP</option>
+        <option value="EXP_PLUS"{#if p1.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option{#if p1.toString() == "MAX"} selected="selected"{/if}>MAX</option>
+        <option value="MAX_OPT"{#if p1.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
+</select>         <select name="p2"><option{#if p2.toString() == "EXP"} selected="selected"{/if}>EXP</option>
+        <option value="EXP_PLUS"{#if p2.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option{#if p2.toString() == "MAX"} selected="selected"{/if}>MAX</option>
+        <option value="MAX_OPT"{#if p2.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
+</select>         <select name="p3"><option{#if p3.toString() == "EXP"} selected="selected"{/if}>EXP</option>
+        <option value="EXP_PLUS" {#if p3.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option{#if p3.toString() == "MAX"} selected="selected"{/if}>MAX</option>
+        <option value="MAX_OPT"{#if p3.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
+</select>
+HOURS
+
+ OFF    <select name="o1"><option{#if o1.toString() == "EXP"}  selected="selected"{/if}>EXP</option>
+        <option value="EXP_PLUS"{#if o1.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option{#if o1.toString() == "MAX"} selected="selected"{/if}>MAX</option>
+        <option value="MAX_OPT"{#if o1.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
+</select>         <select name="o2"><option{#if o2.toString() == "EXP"} selected="selected"{/if}>EXP</option>
+        <option value="EXP_PLUS"{#if o2.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option{#if o2.toString() == "MAX"} selected="selected"{/if}>MAX</option>
+        <option value="MAX_OPT"{#if o2.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
+</select>         <select name="o3"><option{#if o3.toString() == "EXP"} selected="selected"{/if}>EXP</option>
+        <option value="EXP_PLUS"{#if o3.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option{#if o3.toString() == "MAX"} selected="selected"{/if}>MAX</option>
+        <option value="MAX_OPT"{#if o3.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
+</select>
+HOURS
+    </pre>
+
+    <h3>EXP+</h3>
+    Minimum PV Yield: <select name="minimumPVYield">
+    <option value="0"{#if minimumPVYield == 0} selected="selected"{/if}>0 W</option>
+    <option value="100"{#if minimumPVYield == 100} selected="selected"{/if}>100 W</option>
+    <option value="500"{#if minimumPVYield == 250} selected="selected"{/if}>250 W</option>
+    <option value="500"{#if minimumPVYield == 500} selected="selected"{/if}>500 W</option>
+    <option value="750"{#if minimumPVYield == 750} selected="selected"{/if}>750 W</option>
+    <option value="1000"{#if minimumPVYield == 1000} selected="selected"{/if}>1000 W</option>
+</select>
+    <br />
+    <br />
+    Minimum Export: <select name="minimumExport">
+    <option value="0"{#if minimumExport == 0} selected="selected"{/if}>0 W</option>
+    <option value="100"{#if minimumExport == 100} selected="selected"{/if}>100 W</option>
+    <option value="250"{#if minimumExport == 250} selected="selected"{/if}>250 W</option>
+    <option value="500"{#if minimumExport == 500} selected="selected"{/if}>500 W</option>
+    <option value="750"{#if minimumExport == 750} selected="selected"{/if}>750 W</option>
+    <option value="1000"{#if minimumExport == 1000} selected="selected"{/if}>1000 W</option>
+</select>
+    <br />
+    <br />
+
+
+    <h2>Peak management</h2>
+    Static max peak: {max15minpeak}W<br/>
+    Current dynamic peak: {currentmonth15minpeak.value}W<br/>
+    Peak timestamp: {currentmonth15minpeak.timestamp}<br/>
+    Peak strategy: <select name="strategy">
+    <option{#if peakstrategy.toString() == "DYNAMIC_LIMITED"} selected="selected"{/if}>DYNAMIC_LIMITED</option>
+    <option{#if peakstrategy.toString() == "DYNAMIC_UNLIMITED"} selected="selected"{/if}>DYNAMIC_UNLIMITED</option>
+    <option{#if peakstrategy.toString() == "STATIC_LIMITED"} selected="selected"{/if}>STATIC_LIMITED</option>
+    </select>
+
+    <br />
+    <br />
+    <input type="submit" value="Save config" class="button" />
+
+</form>
+
+</body>
+</html>

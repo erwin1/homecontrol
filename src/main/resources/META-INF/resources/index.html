@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>homecontrol - metrics</title>
+    <meta name="viewport" content="width=1024, maximum-scale=1">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+
+    <meta name="viewport" content="width=device-width">
+    <style>
+    .wrapper {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      margin: 50px auto 0 auto;
+      padding-bottom: 30px;
+      border-radius: 3px;
+      clear: both;
+    }
+
+    .box {
+      float: left;
+      min-width: 350px;
+      max-width: 350px;
+      overflow: hidden;
+      min-height: 240px;
+      max-height: 240px;
+      box-sizing: border-box;
+    }
+
+    .box-small {
+      float: left;
+      min-width: 350px;
+      max-width: 350px;
+      overflow: hidden;
+      min-height: 240px;
+      max-height: 240px;
+      box-sizing: border-box;
+    }
+
+    .box-medium {
+      float: left;
+      min-width: 350px;
+      max-width: 350px;
+      overflow: hidden;
+      min-height: 290px;
+      max-height: 290px;
+      box-sizing: border-box;
+    }
+
+
+    .box-large {
+      float: left;
+      min-width: 700px;
+      max-width: 700px;
+      overflow: hidden;
+      min-height: 440px;
+      max-height: 440px;
+      box-sizing: border-box;
+    }
+
+    .container {
+      width: 100%;
+      text-align: center;
+      clear: both;
+    }
+
+    .gauge {
+      width: 320px;
+      height: 240px;
+    }
+
+    button {
+      margin: 30px 5px 0 2px;
+      padding: 16px 40px;
+      border-radius: 5px;
+      font-size: 18px;
+      border: none;
+      background: #34aadc;
+      color: white;
+      cursor: pointer;
+    }
+
+    .legend {
+        width: 40px;
+        height: 20px;
+        float: left;
+    }
+
+    .pv {
+       background-color: #43de66;
+    }
+    .gridin {
+       background-color: #e3110e;
+    }
+    .ev {
+       background-color: #25a5f5;
+    }
+    .home {
+       background-color: #deadff;
+    }
+    .gridout {
+       background-color: #cfcfcf;
+    }
+    .gridinnoev {
+       background-color: #ff9b4a;
+    }
+
+    .legendlabel {
+      float: left;
+      margin-left: 10px;
+      line-height: 20px;
+      height: 20px;
+    }
+
+    .legendrow {
+      clear:both;
+      height: 20px;
+      margin-top: 5px;
+    }
+
+    #ratioChart {
+        float: left;
+        max-width: 59%;
+        max-height: 100%;
+    }
+    .ratioLegend {
+       float: left;
+       padding-top: 70px;
+       margin-left: 10px;
+    }
+    #totalRatioChart {
+        float: left;
+        max-width: 59%;
+        max-height: 100%;
+    }
+
+    .filter {
+      float: left;
+      padding: 20px;
+     }
+     .clear {
+       clear: both;
+     }
+
+     #livedatatimestamp {
+       font-size: 1.5em;
+       padding: 20px;
+     }
+  </style>
+</head>
+<body>
+<p><span id="livedatatimestamp"> - loading - </span></p>
+<div class="wrapper">
+    <div class="box-small">
+        <canvas id="ratioChart"></canvas>
+    </div>
+
+    <div class="box">
+        <div id="gridGauge" class="gauge"></div>
+    </div>
+    <div class="box">
+        <div id="pvGauge" class="gauge"></div>
+    </div>
+    <div class="box">
+        <div id="usageGauge" class="gauge"></div>
+    </div>
+    <div class="box">
+        <span class="ui-icon ui-icon-check" id="evconnected"></span>
+        <span class="ui-icon ui-icon-closethick" id="evnotconnected"></span>
+        <span id="evbatterylevel"></span>
+        <div id="evGauge" class="gauge"></div>
+    </div>
+    <div class="box-medium">
+        <div id="monthPeakGauge" class="gauge"></div>
+        <div id="monthPeakDate" style="font-size: 1.2em;"></div>
+    </div>
+    <div class="box">
+        <div id="currentAverageGauge" class="gauge"></div>
+    </div>
+    <div class="box">
+        <div id="newAverageEstimateGauge" class="gauge"></div>
+    </div>
+
+
+
+</div>
+
+<div id="daytotals"></div>
+
+
+
+
+
+<script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.2/jquery.min.js'></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.js" integrity="sha512-CMF3tQtjOoOJoOKlsS7/2loJlkyctwzSoDK/S40iAB+MqWSaf50uObGQSk5Ny/gfRhRCjNLvoxuCvdnERU4WGg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="raphael.min.js"></script>
+<script src="justgage.js"></script>
+<script src="script.js"></script>
+
+
+</body>
+</html>
