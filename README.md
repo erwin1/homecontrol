@@ -3,8 +3,8 @@
 ## What?
 
 Use power metrics from
- - Solar Iverter
- - EV Charger
+ - Solar inverter
+ - EV charger
  - Smart power meter
 
 to
