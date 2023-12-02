@@ -93,6 +93,16 @@ public class PowerPeakServiceTest {
     }
 
     @Test
+    public void testCurrentMonthPeakNotAvailable() {
+        when(configService.getPeakStrategy()).thenReturn(PeakStrategy.DYNAMIC_UNLIMITED);
+        when(configService.getMax15minPeak()).thenReturn(4000);
+        when(configService.getMin15minPeak()).thenReturn(2500);
+        when(electricalPowerMeter.getMonthlyPowerPeak()).thenThrow(new RuntimeException("unexpected error"));
+
+        assertEquals(2500, powerPeakService.getCurrentMonth15minPeak());
+    }
+
+    @Test
     public void testEstimatePeakInCurrentPeriod1() {
         mockEstimate("00:00:00", 2000, 0, 0);
         assertEquals(2000, powerPeakService.estimatePeakInCurrentPeriod().getItem1());

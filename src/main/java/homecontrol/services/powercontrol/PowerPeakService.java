@@ -43,17 +43,21 @@ public class PowerPeakService {
     public int getCurrentMonth15minPeak() {
         if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)
                 || configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_UNLIMITED)) {
-            MonthlyPowerPeak currentMonth15minUsagePeak = electricalPowerMeter.getMonthlyPowerPeak();
-            if (currentMonth15minUsagePeak != null) {
-                ZonedDateTime now = ZonedDateTime.now(clock);
-                if (now.getMonth() == currentMonth15minUsagePeak.getTimestamp().getMonth()) {
-                    int currentPeak = Math.max(currentMonth15minUsagePeak.getValue(), configService.getMin15minPeak());
-                    if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)) {
-                        return Math.min(currentPeak, configService.getMax15minPeak());
-                    } else {
-                        return currentPeak;
+            try {
+                MonthlyPowerPeak currentMonth15minUsagePeak = electricalPowerMeter.getMonthlyPowerPeak();
+                if (currentMonth15minUsagePeak != null) {
+                    ZonedDateTime now = ZonedDateTime.now(clock);
+                    if (now.getMonth() == currentMonth15minUsagePeak.getTimestamp().getMonth()) {
+                        int currentPeak = Math.max(currentMonth15minUsagePeak.getValue(), configService.getMin15minPeak());
+                        if (configService.getPeakStrategy().equals(PeakStrategy.DYNAMIC_LIMITED)) {
+                            return Math.min(currentPeak, configService.getMax15minPeak());
+                        } else {
+                            return currentPeak;
+                        }
                     }
                 }
+            }catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "could not get current month peak. defaulting to minimum peak", e);
             }
             return configService.getMin15minPeak();
         } else {
