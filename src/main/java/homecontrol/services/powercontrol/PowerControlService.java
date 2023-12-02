@@ -65,6 +65,14 @@ public class PowerControlService {
 
             EVState evState = evControlService.getCurrentState(changedChargerState ? StateRefresh.REFRESH_ALWAYS : StateRefresh.CACHED);
 
+            if (evState.getCharging_state().equals("Charging") && !state.equals(Charger.State.InProgress)) {
+                LOGGER.severe("inconsistent charging state. refreshing ev state.");
+                evState = evControlService.getCurrentState(StateRefresh.REFRESH_ALWAYS);
+                if (evState.getCharging_state().equals("Charging") && !state.equals(Charger.State.InProgress)) {
+                    notificationService.sendNotification("Inconsistent charging/charger state: EV="+evState.getCharging_state()+" Charger="+state);
+                }
+            }
+
             //STAP 1
             if (evState.getBattery_level() >= evState.getCharge_limit_soc()) {
                 LOGGER.log(Level.INFO, "Already at charging limit.");

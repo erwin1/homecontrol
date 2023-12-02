@@ -67,15 +67,15 @@ public class EVControlService {
 
             int currentAmps = chargeState.getCharge_amps();
 
-            if (currentAmps == powerA) {
+            if ((currentAmps == powerA && chargeState.getCharging_state().equals("Charging"))
+                || (powerA == 0 && chargeState.getCharging_state().equals("Stopped"))) {
                 LOGGER.log(Level.INFO, "no power difference. leave everything as it is.");
                 return;
             }
 
             int maxAmps = chargeState.getCharge_current_request_max();
             boolean currentlyCharging = chargeState.getCharging_state().equals("Charging")
-                    || chargeState.getCharging_state().equals("Starting")
-                    || (chargerState != null && chargerState.equals(Charger.State.InProgress));
+                    || chargeState.getCharging_state().equals("Starting");
 
             boolean haveToCharge = false;
 
