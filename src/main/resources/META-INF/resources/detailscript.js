@@ -244,16 +244,18 @@ $(function () {
     var year = 2021;
     var month = 4;
     var now = new Date();
+    var currMonth = now.getFullYear() * 100 + now.getMonth();
     while( true ) {
        $("#month").prepend(new Option( $.datepicker.formatDate( "M yy", new Date(year, month, 1)), $.datepicker.formatDate( "yy-mm", new Date(year, month, 1))));
        $("#month1").prepend(new Option( $.datepicker.formatDate( "M yy", new Date(year, month, 1)), $.datepicker.formatDate( "yy-mm", new Date(year, month, 1))));
        $("#month2").prepend(new Option( $.datepicker.formatDate( "M yy", new Date(year, month, 1)), $.datepicker.formatDate( "yy-mm", new Date(year, month, 1))));
        month++;
-       if (month == 12) {
+       if (month > 11) {
          month = 0;
          year++;
        }
-       if (year >= now.getFullYear() && month > now.getMonth()) {
+       var curr = (year*100) + month;
+       if (curr > currMonth) {
             break;
        }
     }
