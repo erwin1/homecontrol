@@ -1,0 +1,26 @@
+[Unit]
+Description=HomeControl service
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/homecontrol
+ExecStart=java -jar quarkus-run.jar
+# optional items below
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/homecontrol/homecontrol.log
+StandardError=append:/var/log/homecontrol/homecontrol-error.log
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+# How to set up homecontrol as a service on a raspbery pi?
+# - copy the target/quarkus/app into /home/pi/homecontrol
+# - make sure the to configure env variables in /home/pi/homecontrol/.env and create the data directory (if applicable)
+# - copy this service file into /lib/systemd/system (as root)
+# - create /var/log/homecontrol and make it writeble for user pi
+# - run sudo systemctl start homecontrol.service
+# - make sure the service is started (check logs in /var/log/homecontrol)
+# - enable start of the service at boot: sudo systemctl enable homecontrol.service
