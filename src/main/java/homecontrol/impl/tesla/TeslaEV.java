@@ -74,6 +74,15 @@ public class TeslaEV implements ElectricVehicle {
         return null;
     }
 
+    private void invalidateAndRefreshCacheIfOnline() {
+        try {
+            currentState = null;
+            refreshCurrentStateIfOnline();
+        }catch (EVException e) {
+            LOGGER.info("invalidated cache but could not refresh state.");
+        }
+    }
+
     @Retry(maxRetries = 2, delay = 2, delayUnit = ChronoUnit.SECONDS)
     @Override
     public boolean isVehicleOnline() throws EVException {
@@ -97,6 +106,7 @@ public class TeslaEV implements ElectricVehicle {
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
+        invalidateAndRefreshCacheIfOnline();
     }
 
     @Override
@@ -107,6 +117,7 @@ public class TeslaEV implements ElectricVehicle {
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
+        invalidateAndRefreshCacheIfOnline();
     }
 
     @Override
@@ -117,6 +128,7 @@ public class TeslaEV implements ElectricVehicle {
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
+        invalidateAndRefreshCacheIfOnline();
     }
 
     @Override

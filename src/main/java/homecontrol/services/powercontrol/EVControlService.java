@@ -107,7 +107,6 @@ public class EVControlService {
                 }
                 if (currentAmps != powerA) {
                     electricVehicle.changeChargingAmps(powerA);
-                    chargeState = electricVehicle.getCurrentState(StateRefresh.REFRESH_ALWAYS);
                     if (action == null) {
                         action = "CHANGE_AMPS";
                     }
@@ -118,7 +117,6 @@ public class EVControlService {
                     action = "STOPPED";
                     electricVehicle.stopCharging();
                     electricVehicle.changeChargingAmps(5);
-                    chargeState = electricVehicle.getCurrentState(StateRefresh.REFRESH_ALWAYS);
                 }
             }
             if (action != null) {
