@@ -89,6 +89,10 @@ public class HWEP1Client {
         telegram.setTotal_power_export_t2_kwh(new BigDecimal(parseValue(map.get("1-0:2.8.2").get(0))));
         telegram.setTotal_power_import_kwh(telegram.getTotal_power_import_t1_kwh().add(telegram.getTotal_power_import_t2_kwh()));
         telegram.setTotal_power_export_kwh(telegram.getTotal_power_export_t1_kwh().add(telegram.getTotal_power_export_t2_kwh()));
+        List<String> gas = map.get("0-1:24.2.3");
+        if (gas != null && gas.size() > 1) {
+            telegram.setTotal_gas_m3(new BigDecimal(parseValue(gas.get(1))));
+        }
         telegram.setTotal_gas_m3(new BigDecimal(parseValue(map.get("0-1:24.2.3").get(1))));
         telegram.setActive_power_average_w(new BigDecimal(parseValue(map.get("1-0:1.4.0").get(0))).multiply(new BigDecimal(1000)).intValue());
         telegram.setActive_power_import_w(new BigDecimal(parseValue(map.get("1-0:1.7.0").get(0))).multiply(new BigDecimal(1000)).intValue());
