@@ -38,6 +38,7 @@ public class SMAInverter implements Inverter {
     @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
     @Asynchronous
     public Uni<Integer> getCurrentYield() {
+        if (isDisabled()) return Uni.createFrom().item(0);
         return Uni.createFrom().item(getLiveSMAPowerDataInternal());
     }
 
@@ -183,5 +184,9 @@ public class SMAInverter implements Inverter {
                 throw new RuntimeException(e);
             }
         }
+    }
+    
+    boolean isDisabled() {
+        return "NONE".equals(inverterIp);
     }
 }
