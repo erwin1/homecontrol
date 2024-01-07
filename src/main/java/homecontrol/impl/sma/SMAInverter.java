@@ -185,7 +185,7 @@ public class SMAInverter implements Inverter {
             }
         }
     }
-    
+
     boolean isDisabled() {
         return "NONE".equals(inverterIp);
     }

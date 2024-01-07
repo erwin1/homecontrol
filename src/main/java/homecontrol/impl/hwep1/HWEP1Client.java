@@ -26,10 +26,9 @@ public class HWEP1Client {
 
     @ConfigProperty(name = "EVCHARGING_HWEP1_IP")
     String ip;
-    
+
     @ConfigProperty(name = "HAS_GAS", defaultValue = "true")
     String hasGas;
-    
 
     boolean hasGas() {
         return Boolean.valueOf(hasGas);
