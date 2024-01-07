@@ -27,9 +27,9 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class SMAInverter implements Inverter {
     public static final Logger LOGGER = Logger.getLogger(SMAInverter.class.getName());
-    @ConfigProperty(name = "EVCHARGING_INVERTER_IP")
+    @ConfigProperty(name = "EVCHARGING_INVERTER_IP", defaultValue="NONE")
     String inverterIp;
-    @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD")
+    @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD", defaultValue="NONE")
     String inverterPassword;
 
     String sid;

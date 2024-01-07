@@ -19,7 +19,7 @@ import java.time.temporal.ChronoUnit;
 @ApplicationScoped
 public class SMACharger implements Charger {
 
-    @ConfigProperty(name = "EVCHARGING_CHARGER_IP")
+    @ConfigProperty(name = "EVCHARGING_CHARGER_IP", defaultValue="NONE")
     String chargerIp;
     @ConfigProperty(name = "EVCHARGING_CHARGER_USERNAME")
     String chargerUserName;
