@@ -12,10 +12,12 @@ to
 - Monitor live and historical power usage
 - Get alerts e.g. high usage
 
-Currently this project only supports intervers and EV chargers from SMA and a Smart 
+Currently, this project only supports inverters and EV chargers from SMA and a Smart 
 power meter with a P1 port. To control EV charging, only Tesla is currently supported.
 However, this project is set up so that new device are easily pluggable. Get in touch if
 you're interested in adding more device implementations.
+
+![Overview](/docs/homecontrol-overview.png)
 
 ## Why?
 
