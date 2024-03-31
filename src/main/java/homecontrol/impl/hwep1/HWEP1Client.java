@@ -81,7 +81,7 @@ public class HWEP1Client {
         .collect(Collectors.toMap(r -> r.getItem1(), r -> r.getItem2()));
 
         Telegram telegram = new Telegram();
-        telegram.setTimestamp(map.get("0-0:1.0.0").get(0).replaceAll("W", ""));
+        telegram.setTimestamp(map.get("0-0:1.0.0").get(0).replaceAll("W", "").replaceAll("S", ""));
         telegram.setActive_voltage_v(new BigDecimal(parseValue(map.get("1-0:32.7.0").get(0))));
         telegram.setTotal_power_import_t1_kwh(new BigDecimal(parseValue(map.get("1-0:1.8.1").get(0))));
         telegram.setTotal_power_import_t2_kwh(new BigDecimal(parseValue(map.get("1-0:1.8.2").get(0))));
