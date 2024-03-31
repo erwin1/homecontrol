@@ -1,8 +1,10 @@
 package homecontrol.services.ev;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 public class EVState {
+    private Instant timestamp;
     private int battery_level;
     private int charge_amps;
     private int charge_current_request;
@@ -16,6 +18,14 @@ public class EVState {
     private int charger_actual_current;
     private int charger_power;
     private String charging_state;
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
 
     public int getBattery_level() {
         return battery_level;

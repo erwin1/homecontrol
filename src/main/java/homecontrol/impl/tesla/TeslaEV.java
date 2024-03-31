@@ -12,6 +12,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Asynchronous;
 import org.eclipse.microprofile.faulttolerance.Retry;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -38,7 +40,7 @@ public class TeslaEV implements ElectricVehicle {
     public EVState getCurrentState(StateRefresh stateRefresh) throws EVException {
         EVState state = switch (stateRefresh) {
             case CACHED_OR_NULL -> currentState;
-            case CACHED -> getCurrentState();
+            case CACHED -> getCurrentState(stateRefresh.getMaxCacheTimeIfOnline(), stateRefresh.getMaxCacheTime());
             case REFRESH_IF_ONLINE -> refreshCurrentStateIfOnline();
             case REFRESH_ALWAYS -> refreshCurrentState();
         };
@@ -48,9 +50,18 @@ public class TeslaEV implements ElectricVehicle {
         return state;
     }
 
-    private EVState getCurrentState() throws EVException {
+    private EVState getCurrentState(Duration maxCacheTimeIfOnline, Duration maxCacheTime) throws EVException {
         if (currentState == null) {
             return refreshCurrentState();
+        }
+        if (currentState.getTimestamp().plus(maxCacheTime.toSeconds(), ChronoUnit.SECONDS).isBefore(Instant.now())) {
+            return refreshCurrentState();
+        }
+        if (currentState.getTimestamp().plus(maxCacheTimeIfOnline.toSeconds(), ChronoUnit.SECONDS).isBefore(Instant.now())) {
+            EVState newState = refreshCurrentStateIfOnline();
+            if (newState != null) {
+                return newState;
+            }
         }
         return currentState;
     }

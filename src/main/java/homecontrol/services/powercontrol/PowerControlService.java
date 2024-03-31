@@ -65,10 +65,10 @@ public class PowerControlService {
 
             EVState evState = evControlService.getCurrentState(changedChargerState ? StateRefresh.REFRESH_ALWAYS : StateRefresh.CACHED);
 
-            if (evState.getCharging_state().equals("Charging") && !state.equals(Charger.State.InProgress)) {
+            if (isInconsistent(state, evState)) {
                 LOGGER.severe("inconsistent charging state. refreshing ev state.");
                 evState = evControlService.getCurrentState(StateRefresh.REFRESH_ALWAYS);
-                if (evState.getCharging_state().equals("Charging") && !state.equals(Charger.State.InProgress)) {
+                if (isInconsistent(state, evState)) {
                     notificationService.sendNotification("Inconsistent charging/charger state: EV="+evState.getCharging_state()+" Charger="+state);
                 }
             }
@@ -107,6 +107,11 @@ public class PowerControlService {
             LOGGER.log(Level.SEVERE, "error in homecontrol", e);
             notificationService.sendNotification("Error in homecontrol "+e+" "+e.getStackTrace()[0].toString());
         }
+    }
+
+    private boolean isInconsistent(Charger.State state, EVState evState) {
+        return (evState.getCharging_state().equals("Charging") && !state.equals(Charger.State.InProgress)) ||
+                (!evState.getCharging_state().equals("Charging") && state.equals(Charger.State.InProgress));
     }
 
 

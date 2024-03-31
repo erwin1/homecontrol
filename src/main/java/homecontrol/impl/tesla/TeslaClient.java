@@ -9,6 +9,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -41,6 +42,7 @@ public class TeslaClient {
         JsonObject rsp = responseObject.getJsonObject("response").getJsonObject("charge_state");
 
         EVState state = new EVState();
+        state.setTimestamp(Instant.now());
         state.setCharge_amps(rsp.getInteger("charge_amps"));
         state.setCharge_current_request(rsp.getInteger("charge_current_request"));
         state.setCharge_current_request_max(rsp.getInteger("charge_current_request_max"));

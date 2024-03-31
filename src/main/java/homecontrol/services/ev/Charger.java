@@ -5,6 +5,7 @@ import io.smallrye.mutiny.Uni;
 public interface Charger {
     enum State {
         NotConnected,
+        Initializing,
         Waiting,
         InProgress
     }
