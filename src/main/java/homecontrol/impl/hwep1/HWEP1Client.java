@@ -97,7 +97,7 @@ public class HWEP1Client {
         telegram.setActive_power_average_w(new BigDecimal(parseValue(map.get("1-0:1.4.0").get(0))).multiply(new BigDecimal(1000)).intValue());
         telegram.setActive_power_import_w(new BigDecimal(parseValue(map.get("1-0:1.7.0").get(0))).multiply(new BigDecimal(1000)).intValue());
         telegram.setActive_power_export_w(new BigDecimal(parseValue(map.get("1-0:2.7.0").get(0))).multiply(new BigDecimal(1000)).intValue());
-        telegram.setMontly_power_peak_timestamp(map.get("1-0:1.6.0").get(0).replaceAll("W", ""));
+        telegram.setMontly_power_peak_timestamp(map.get("1-0:1.6.0").get(0).replaceAll("W", "").replaceAll("S", ""));
         telegram.setMontly_power_peak_w(new BigDecimal(parseValue(map.get("1-0:1.6.0").get(1))).multiply(new BigDecimal(1000)).intValue());
 
         return telegram;
