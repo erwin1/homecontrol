@@ -90,7 +90,11 @@ public class PowerControlService {
             Uni<Integer> solarYieldUni = inverter.getCurrentYield();
             Uni<Integer> chargingUni = charger.getActivePower();
 
-            var tuple = Uni.combine().all().unis(activePowerUni, solarYieldUni, chargingUni).asTuple().await().atMost(Duration.ofSeconds(30));
+            var tuple = Uni.combine().all().unis(
+                    activePowerUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("activePower timeout")),
+                    solarYieldUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("solarYield timeout")),
+                    chargingUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("charging timeout"))
+            ).asTuple().await().atMost(Duration.ofSeconds(31));
 
             int chargeAmps = powerCalculator.calculateOptimalChargingA(evChargingStrategy,
                     tuple.getItem1(),
@@ -104,8 +108,8 @@ public class PowerControlService {
             evControlService.changeCharging(chargeAmps);
 
         }catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "error in homecontrol", e);
-            notificationService.sendNotification("Error in homecontrol "+e+" "+e.getStackTrace()[0].toString());
+            LOGGER.log(Level.SEVERE, "error in homecontrol: "+e.getMessage(), e);
+            notificationService.sendNotification("Error in homecontrol: "+e.getMessage()+" "+e+" "+e.getStackTrace()[0].toString());
         }
     }
 
