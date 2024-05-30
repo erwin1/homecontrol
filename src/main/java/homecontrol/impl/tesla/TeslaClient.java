@@ -3,6 +3,7 @@ package homecontrol.impl.tesla;
 import homecontrol.services.ev.EVState;
 import io.vertx.core.json.JsonObject;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class TeslaClient {
     public static final Logger LOGGER = Logger.getLogger(TeslaClient.class.getName());
@@ -21,10 +23,20 @@ public class TeslaClient {
     private String refreshToken;
     private String vehicle;
     private String accessToken;
+    private String vin;
+    private String keyName;
+    private String tokenName;
+    private String sdkDir;
+    private String cacheFile;
 
-    public TeslaClient(String refreshToken, String vehicle) {
+    public TeslaClient(String refreshToken, String vehicle, String vin, String keyName, String tokenName, String sdkDir, String cacheFile) {
         this.refreshToken = refreshToken;
         this.vehicle = vehicle;
+        this.vin = vin;
+        this.keyName = keyName;
+        this.tokenName = tokenName;
+        this.sdkDir = sdkDir;
+        this.cacheFile = cacheFile;
     }
 
     public EVState getChargeState() throws TeslaException {
@@ -54,104 +66,71 @@ public class TeslaClient {
     }
 
     public boolean openChargePortDoor() throws TeslaException {
-        if (accessToken == null) {
-            accessToken = getAccessToken(refreshToken);
-        }
-        HttpRequest request = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/charge_port_door_open"))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{}"))
-                .build();
-        JsonObject responseObject = sendRequest(request);
-        boolean result = responseObject.getJsonObject("response").getBoolean("result");
-        LOGGER.log(Level.INFO, "charge poort door open. result = {0}", result);
-        return result;
+        executeCommand("charge-port-open");
+        return true;
     }
 
     public boolean setChargingAmps(int amps) throws TeslaException {
-        if (accessToken == null) {
-            accessToken = getAccessToken(refreshToken);
-        }
-        HttpRequest request = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/set_charging_amps"))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{\"charging_amps\":\""+amps+"\"}"))
-                .build();
-        JsonObject responseObject = sendRequest(request);
-        boolean result = responseObject.getJsonObject("response").getBoolean("result");
-        LOGGER.log(Level.INFO, "set charging amps to {0}. result = {1}", new Object[]{amps, result});
-        return result;
+        executeCommand("charging-set-amps "+amps);
+        return true;
     }
 
     public boolean setScheduledCharging(boolean enabled, int time) throws TeslaException {
-        if (accessToken == null) {
-            accessToken = getAccessToken(refreshToken);
+        if (enabled) {
+            executeCommand("charging-schedule "+time);
+        } else {
+            executeCommand("charging-schedule-cancel");
         }
-        HttpRequest request = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/set_scheduled_charging"))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{\"enable\":\""+enabled+"\", \"time\": "+time+"}"))
-                .build();
-        JsonObject responseObject = sendRequest(request);
-        boolean result = responseObject.getJsonObject("response").getBoolean("result");
-        LOGGER.log(Level.INFO, "set scheduled charging to {0} {1}. result = {2}", new Object[]{enabled, time, result});
-        return result;
+        return true;
     }
 
     public void wakeup() throws TeslaException {
-        if (accessToken == null) {
-            accessToken = getAccessToken(refreshToken);
-        }
-        HttpRequest request = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/wake_up"))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{}"))
-                .build();
-        JsonObject responseObject = sendRequest(request);
-        LOGGER.log(Level.INFO, "wake up. result = {0}", responseObject);
+        executeCommand("wake");
+//        if (accessToken == null) {
+//            accessToken = getAccessToken(refreshToken);
+//        }
+//        HttpRequest request = HttpRequest.newBuilder()
+//                .timeout(Duration.ofSeconds(10))
+//                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/wake_up"))
+//                .header("Accept", "application/json")
+//                .header("Authorization", "Bearer " + accessToken)
+//                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+//                .build();
+//        JsonObject responseObject = sendRequest(request);
+//        LOGGER.log(Level.INFO, "wake up. result = {0}", responseObject);
     }
 
     public boolean stopCharging() throws TeslaException {
-        if (accessToken == null) {
-            accessToken = getAccessToken(refreshToken);
-        }
-        HttpRequest request = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/charge_stop"))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{}"))
-                .build();
-        JsonObject responseObject = sendRequest(request);
-
-        boolean result = responseObject.getJsonObject("response").getBoolean("result");
-        LOGGER.log(Level.INFO, "stop charging. result = {0}", result);
-        return result;
+        executeCommand("charging-stop");
+        return true;
     }
 
     public boolean startCharging() throws TeslaException {
-        if (accessToken == null) {
-            accessToken = getAccessToken(refreshToken);
+        executeCommand("charging-start");
+        return true;
+    }
+
+    private void executeCommand(String command) throws TeslaException {
+        try {
+            ProcessBuilder builder = new ProcessBuilder("./tesla-control", "-ble", "-debug", command);
+            builder.directory(new File(sdkDir));
+            builder.environment().put("TESLA_KEY_NAME", keyName);
+            builder.environment().put("TESLA_TOKEN_NAME", tokenName);
+            builder.environment().put("TESLA_CACHE_FILE", cacheFile);
+            builder.environment().put("TESLA_VIN", vin);
+            Process p = builder.start();
+            int status = p.waitFor();
+            if (status != 0) {
+                String error = p.errorReader().lines().collect(Collectors.joining("\n"));
+                LOGGER.warning("Error sending BLE command "+error);
+                throw new TeslaException(408, "command returned "+status);
+            }
+        } catch (TeslaException e) {
+            throw e;
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "unexpected exception running command", e);
+            throw new TeslaException(0, "unexpected exception running command "+e);
         }
-        HttpRequest request = HttpRequest.newBuilder()
-                .timeout(Duration.ofSeconds(10))
-                .uri(URI.create(BASE + "/api/1/vehicles/"+vehicle+"/command/charge_start"))
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .POST(HttpRequest.BodyPublishers.ofString("{}"))
-                .build();
-        JsonObject responseObject = sendRequest(request);
-        boolean result = responseObject.getJsonObject("response").getBoolean("result");
-        LOGGER.log(Level.INFO, "start charging. result = {0}", result);
-        return result;
     }
 
     String getAccessToken(String refreshToken) throws TeslaException {
