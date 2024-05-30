@@ -27,12 +27,16 @@ public class TeslaEV implements ElectricVehicle {
 
     @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE")
     String vehicle;
+    @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE_VIN")
+    String vehicleVIN;
+    @ConfigProperty(name = "EVCHARGING_TESLA_CLIENT_ID")
+    String clientId;
     private TeslaClient teslaClient;
     private EVState currentState;
 
     @PostConstruct
     public void postConstruct() {
-        teslaClient = new TeslaClient(refreshToken, vehicle);
+        teslaClient = new TeslaClient(clientId, refreshToken, vehicle, vehicleVIN);
     }
 
     @Override
