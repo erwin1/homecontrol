@@ -19,7 +19,7 @@ import java.time.temporal.ChronoUnit;
 @ApplicationScoped
 public class SMACharger implements Charger {
 
-    @ConfigProperty(name = "EVCHARGING_CHARGER_IP")
+    @ConfigProperty(name = "EVCHARGING_CHARGER_IP", defaultValue="NONE")
     String chargerIp;
     @ConfigProperty(name = "EVCHARGING_CHARGER_USERNAME")
     String chargerUserName;
@@ -53,6 +53,7 @@ public class SMACharger implements Charger {
     @Asynchronous
     @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public Uni<Integer> getActivePower() {
+        if (isDisabled()) return Uni.createFrom().item(0);
         int activePower = (int) getLivePowerMeterReading();
         return Uni.createFrom().item(activePower);
     }
@@ -64,6 +65,7 @@ public class SMACharger implements Charger {
     }
 
     public State getStateInternal() {
+        if (isDisabled()) return State.NotConnected;
         try {
             if (token == null) {
                 token = authenticate();
@@ -204,4 +206,7 @@ public class SMACharger implements Charger {
         }
     }
 
+    boolean isDisabled() {
+        return "NONE".equals(chargerIp);
+    }
 }
