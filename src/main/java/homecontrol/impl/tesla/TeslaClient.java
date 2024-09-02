@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 public class TeslaClient {
     public static final Logger LOGGER = Logger.getLogger(TeslaClient.class.getName());
 
+    private static Object commandLock = new Object();
+
     public static final String BASE = "https://owner-api.teslamotors.com";
 
     private String refreshToken;
@@ -66,26 +68,28 @@ public class TeslaClient {
     }
 
     public boolean openChargePortDoor() throws TeslaException {
-        executeCommand("charge-port-open");
+        executeCommand("wake", null);
+        executeCommand("charge-port-open", null);
+        executeCommand("unlock", null);
         return true;
     }
 
     public boolean setChargingAmps(int amps) throws TeslaException {
-        executeCommand("charging-set-amps "+amps);
+        executeCommand("charging-set-amps", String.valueOf(amps));
         return true;
     }
 
     public boolean setScheduledCharging(boolean enabled, int time) throws TeslaException {
         if (enabled) {
-            executeCommand("charging-schedule "+time);
+            executeCommand("charging-schedule ", String.valueOf(time));
         } else {
-            executeCommand("charging-schedule-cancel");
+            executeCommand("charging-schedule-cancel", null);
         }
         return true;
     }
 
     public void wakeup() throws TeslaException {
-        executeCommand("wake");
+        executeCommand("wake", null);
 //        if (accessToken == null) {
 //            accessToken = getAccessToken(refreshToken);
 //        }
@@ -101,35 +105,42 @@ public class TeslaClient {
     }
 
     public boolean stopCharging() throws TeslaException {
-        executeCommand("charging-stop");
+        executeCommand("charging-stop", null);
         return true;
     }
 
     public boolean startCharging() throws TeslaException {
-        executeCommand("charging-start");
+        executeCommand("charging-start", null);
         return true;
     }
 
-    private void executeCommand(String command) throws TeslaException {
-        try {
-            ProcessBuilder builder = new ProcessBuilder("./tesla-control", "-ble", "-debug", command);
-            builder.directory(new File(sdkDir));
-            builder.environment().put("TESLA_KEY_NAME", keyName);
-            builder.environment().put("TESLA_TOKEN_NAME", tokenName);
-            builder.environment().put("TESLA_CACHE_FILE", cacheFile);
-            builder.environment().put("TESLA_VIN", vin);
-            Process p = builder.start();
-            int status = p.waitFor();
-            if (status != 0) {
-                String error = p.errorReader().lines().collect(Collectors.joining("\n"));
-                LOGGER.warning("Error sending BLE command "+error);
-                throw new TeslaException(408, "command returned "+status);
+    private void executeCommand(String command, String opt) throws TeslaException {
+        synchronized (commandLock) {
+            try {
+                LOGGER.info("executing command: " + command + " " + (opt != null ? opt + " " : ""));
+                ProcessBuilder builder = new ProcessBuilder("./tesla-control", "-ble", "-debug", command);
+                if (opt != null) {
+                    builder.command().add(opt);
+                }
+                builder.directory(new File(sdkDir));
+                builder.environment().put("TESLA_KEY_NAME", keyName);
+                builder.environment().put("TESLA_TOKEN_NAME", tokenName);
+                builder.environment().put("TESLA_CACHE_FILE", cacheFile);
+                builder.environment().put("TESLA_VIN", vin);
+                Process p = builder.start();
+                int status = p.waitFor();
+                if (status != 0) {
+                    String error = p.errorReader().lines().collect(Collectors.joining("\n"));
+                    LOGGER.warning("Error sending BLE command " + error);
+                    throw new TeslaException(408, "command returned " + status);
+                }
+                LOGGER.info("command " + command + " " + (opt != null ? opt + " " : "") + " executed successfully");
+            } catch (TeslaException e) {
+                throw e;
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "unexpected exception running command", e);
+                throw new TeslaException(0, "unexpected exception running command " + e);
             }
-        } catch (TeslaException e) {
-            throw e;
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "unexpected exception running command", e);
-            throw new TeslaException(0, "unexpected exception running command "+e);
         }
     }
 

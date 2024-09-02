@@ -120,7 +120,7 @@ public class TeslaEV implements ElectricVehicle {
 
 
     @Override
-    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
+    @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public void startCharging() throws EVException {
         try {
             teslaClient.startCharging();
@@ -131,7 +131,7 @@ public class TeslaEV implements ElectricVehicle {
     }
 
     @Override
-    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
+    @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public void stopCharging() throws EVException {
         try {
             teslaClient.stopCharging();
@@ -142,7 +142,7 @@ public class TeslaEV implements ElectricVehicle {
     }
 
     @Override
-    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
+    @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public void changeChargingAmps(int amps) throws EVException {
         try {
             teslaClient.setChargingAmps(amps);
