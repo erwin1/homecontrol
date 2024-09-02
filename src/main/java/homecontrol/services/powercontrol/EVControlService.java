@@ -41,18 +41,6 @@ public class EVControlService {
                 }
             }
             if (enable != null) {
-                try {
-                    LOGGER.info((enable ? "re-enable" : "disable") + " scheduled charging");
-                    if (enable) {
-                        electricVehicle.enableScheduledCharging();
-                    } else {
-                        electricVehicle.disableScheduledCharging();
-                    }
-                    electricVehicle.stopCharging();
-                } catch (EVException e) {
-                    LOGGER.severe("could not change scheduled charging to " + enable);
-                    notificationService.sendNotification("could not change scheduled charging to " + enable);
-                }
                 this.chargerState = state;
                 return true;
             }
