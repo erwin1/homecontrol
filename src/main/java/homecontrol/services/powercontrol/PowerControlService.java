@@ -91,9 +91,9 @@ public class PowerControlService {
             Uni<Integer> chargingUni = charger.getActivePower();
 
             var tuple = Uni.combine().all().unis(
-                    activePowerUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("activePower timeout")),
-                    solarYieldUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("solarYield timeout")),
-                    chargingUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("charging timeout"))
+                    activePowerUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("read activePower timeout")),
+                    solarYieldUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("read solarYield timeout")),
+                    chargingUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("read charger timeout"))
             ).asTuple().await().atMost(Duration.ofSeconds(31));
 
             int chargeAmps = powerCalculator.calculateOptimalChargingA(evChargingStrategy,
