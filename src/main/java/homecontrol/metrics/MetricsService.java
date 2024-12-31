@@ -7,13 +7,17 @@ import homecontrol.services.powermeter.ActivePower;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
 import homecontrol.services.powermeter.MonthlyPowerPeak;
 import homecontrol.services.solar.Inverter;
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.Mailer;
 import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -51,6 +55,14 @@ public class MetricsService {
     @Inject
     NotificationService notificationService;
 
+    @Inject
+    Mailer mailer;
+
+    @ConfigProperty(name = "chargerName")
+    String chargerName;
+    @ConfigProperty(name = "reportTo")
+    String reportTo;
+
     @Scheduled(cron="0 0 7 * * ?")
     void sendDailySummary() throws IOException {
         LOGGER.log(Level.INFO, "Creating daily summary");
@@ -73,6 +85,31 @@ public class MetricsService {
         BigDecimal totalUsage = totals.getImport().add(totals.getPV()).subtract(totals.getExport());
         BigDecimal totalUsageWithoutEV = totalUsage.subtract(totals.getEV());
         notificationService.sendNotification("Monthly summary for "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yy"))+"\nin="+totals.getImport()+"\nex="+totals.getExport()+"\nev="+totals.getEV()+"\npv="+totals.getPV()+"\ntotal usage = "+totalUsage+"\nwithout ev = "+totalUsageWithoutEV+"\ngrid in without ev="+(totals.getImport().subtract(totals.getEV())));
+    }
+
+    @Scheduled(cron="0 5 12 1 * ?")
+    public void sendEVMonthly() throws IOException {
+        LOGGER.log(Level.INFO, "Creating monthly EV summary");
+        ZonedDateTime lastMonthStart = ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0).withDayOfMonth(1).minusMonths(1);
+        List<CombinedMetrics> metrics = getCombinedMetrics(lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day");
+        CombinedMetrics totals = calculateTotals(metrics);
+        totals.getEV();
+        StringBuilder text = new StringBuilder("EV charging usage ");
+        text.append(lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy"))).append("\n");
+        text.append("Charger: ").append(chargerName).append("\n");
+        text.append("\n");
+        for(CombinedMetrics m : metrics) {
+            text.append(m.getTimestamp().format((DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+            text.append("\t").append(m.getEV()).append(" kWh\n");
+        }
+        text.append("\nTOTAL:\t\t").append(totals.getEV()).append(" kWh").append("\n");
+        mailer.send(
+            Mail.withText(
+                reportTo,
+                "EV Charging overview "+chargerName+" "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")),
+                text.toString()
+            )
+        );
     }
 
     public LiveMetrics getLiveMetrics() {
