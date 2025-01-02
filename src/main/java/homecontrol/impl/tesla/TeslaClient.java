@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -128,11 +129,11 @@ public class TeslaClient {
                 builder.environment().put("TESLA_CACHE_FILE", cacheFile);
                 builder.environment().put("TESLA_VIN", vin);
                 Process p = builder.start();
-                int status = p.waitFor();
-                if (status != 0) {
+                p.waitFor(2, TimeUnit.MINUTES);
+                if (p.exitValue() != 0) {
                     String error = p.errorReader().lines().collect(Collectors.joining("\n"));
                     LOGGER.warning("Error sending BLE command " + error);
-                    throw new TeslaException(408, "command returned " + status);
+                    throw new TeslaException(408, "command returned " + p.exitValue());
                 }
                 LOGGER.info("command " + command + " " + (opt != null ? opt + " " : "") + " executed successfully");
             } catch (TeslaException e) {
