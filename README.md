@@ -83,7 +83,7 @@ env variables the Tesla SDK requires: `EVCHARGING_TESLA_VEHICLE_VIN`, `EVCHARGIN
 
 *HomeWizard*
 
-Check [this page](https://homewizard-energy-api.readthedocs.io/discovery.html) on how to find the local IP address.
+Check [this page](https://api-documentation.homewizard.com/docs/discovery) on how to find the local IP address.
 
 *Slack*
 
