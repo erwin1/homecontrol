@@ -1,5 +1,6 @@
 package homecontrol.impl.tesla;
 
+import homecontrol.metrics.MetricsLogger;
 import homecontrol.services.ev.EVException;
 import homecontrol.services.ev.EVState;
 import homecontrol.services.ev.ElectricVehicle;
@@ -8,6 +9,7 @@ import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Asynchronous;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -22,11 +24,9 @@ import java.util.logging.Logger;
 public class TeslaEV implements ElectricVehicle {
     public static final Logger LOGGER = Logger.getLogger(TeslaEV.class.getName());
 
-    @ConfigProperty(name = "EVCHARGING_TESLA_REFRESHTOKEN")
-    String refreshToken;
+    @Inject
+    private MetricsLogger metricsLogger;
 
-    @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE")
-    String vehicle;
     @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE_VIN")
     String vin;
     @ConfigProperty(name = "EVCHARGING_TESLA_KEY_NAME")
@@ -42,12 +42,13 @@ public class TeslaEV implements ElectricVehicle {
 
     @PostConstruct
     public void postConstruct() {
-        teslaClient = new TeslaClient(refreshToken, vehicle, vin, keyName, tokenName, sdkDir, cacheFile);
+        teslaClient = new TeslaClient(vin, keyName, tokenName, sdkDir, cacheFile);
     }
 
     @Override
     @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public EVState getCurrentState(StateRefresh stateRefresh) throws EVException {
+        LOGGER.fine("getCurrentState "+stateRefresh);
         EVState state = switch (stateRefresh) {
             case CACHED_OR_NULL -> currentState;
             case CACHED -> getCurrentState(stateRefresh.getMaxCacheTimeIfOnline(), stateRefresh.getMaxCacheTime());
@@ -78,16 +79,23 @@ public class TeslaEV implements ElectricVehicle {
 
     private EVState refreshCurrentState() throws EVException {
         try {
-            return teslaClient.getChargeState();
+            LOGGER.fine("refreshing state");
+            EVState state = teslaClient.getChargeState();
+            metricsLogger.logEVCharging("REFRESHED_STATE", state.getCharge_amps());
+            return state;
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
     }
 
     private EVState refreshCurrentStateIfOnline() throws EVException {
+        LOGGER.fine("refreshCurrentStateIfOnline");
         try {
             if (isVehicleOnline()) {
-                return teslaClient.getChargeState();
+                LOGGER.fine("vehicle is online");
+                EVState state = teslaClient.getChargeState();
+                metricsLogger.logEVCharging("REFRESHED_STATE_ONLINE", state.getCharge_amps());
+                return state;
             }
         } catch (TeslaException e) {
             LOGGER.info("non-fatal exception while getting charge state "+e);
@@ -108,14 +116,11 @@ public class TeslaEV implements ElectricVehicle {
     @Override
     public boolean isVehicleOnline() throws EVException {
         try {
-            JsonObject vehicle = teslaClient.getVehicle(this.vehicle);
-            if (vehicle.getJsonObject("response").getString("state").equals("online")) {
-                return true;
-            }
+            LOGGER.fine("checking if vehicle is online");
+            return teslaClient.isVehicleOnline();
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
-        return false;
     }
 
 
@@ -185,9 +190,7 @@ public class TeslaEV implements ElectricVehicle {
     }
 
     private EVException handleTeslaException(TeslaException e) {
-        if (e.getCode() == 401) {
-            teslaClient.clearAccessToken();
-        } else if (e.getCode() == 408) {
+        if (e.getCode() == 408) {
             try {
                 LOGGER.info("trying to wake-up tesla");
                 teslaClient.wakeup();
