@@ -1,5 +1,7 @@
 package homecontrol.services.powercontrol;
 
+import homecontrol.impl.tesla.TeslaEV;
+import homecontrol.impl.tesla.TeslaException;
 import homecontrol.services.config.ConfigService;
 import homecontrol.services.config.EVChargingStrategy;
 import homecontrol.services.config.Mode;
@@ -109,8 +111,29 @@ public class PowerControlService {
 
         }catch (Exception e) {
             LOGGER.log(Level.SEVERE, "error in homecontrol: "+e.getMessage(), e);
-            notificationService.sendNotification("Error in homecontrol: "+e.getMessage()+" "+e+" "+e.getStackTrace()[0].toString());
+            boolean alert = true;
+            TeslaException te = findCause(e);
+            LOGGER.info("exception = "+e+" tesla exception = "+te);
+            if (te != null) {
+                LOGGER.info("tesla exception = "+te+" code = "+te.getCode());
+                if (te.getCode() == 409) {
+                    alert = false;
+                }
+            }
+            if (alert) {
+                notificationService.sendNotification("Error in homecontrol: " + e.getMessage() + " " + e + " " + e.getStackTrace()[0].toString());
+            }
         }
+    }
+
+    private TeslaException findCause(Throwable e) {
+        if (e instanceof TeslaException) {
+            return (TeslaException) e;
+        }
+        if (e.getCause() != null) {
+            return findCause(e.getCause());
+        }
+        return null;
     }
 
     private boolean isInconsistent(Charger.State state, EVState evState) {

@@ -211,24 +211,24 @@ public class PowerControlServiceTest {
 
     public void checkChargingStartedAt(int amps) throws EVException {
         Mockito.verify(electricVehicle).startCharging();
-        Mockito.verify(electricVehicle, Mockito.never()).stopCharging();
+        Mockito.verify(electricVehicle, Mockito.never()).stopCharging(5);
         Mockito.verify(electricVehicle).changeChargingAmps(Mockito.eq(amps));
     }
 
     public void checkChargingStopped() throws EVException {
         Mockito.verify(electricVehicle, Mockito.never()).startCharging();
-        Mockito.verify(electricVehicle).stopCharging();
+        Mockito.verify(electricVehicle).stopCharging(5);
     }
 
     public void checkNoChange() throws EVException {
         Mockito.verify(electricVehicle, Mockito.never()).startCharging();
-        Mockito.verify(electricVehicle, Mockito.never()).stopCharging();
+        Mockito.verify(electricVehicle, Mockito.never()).stopCharging(5);
         Mockito.verify(electricVehicle, Mockito.never()).changeChargingAmps(Mockito.anyInt());
     }
 
     public void checkKeepsChargingAt(int amps) throws EVException {
         Mockito.verify(electricVehicle, Mockito.never()).startCharging();
-        Mockito.verify(electricVehicle, Mockito.never()).stopCharging();
+        Mockito.verify(electricVehicle, Mockito.never()).stopCharging(5);
         Mockito.verify(electricVehicle).changeChargingAmps(Mockito.eq(amps));
     }
 

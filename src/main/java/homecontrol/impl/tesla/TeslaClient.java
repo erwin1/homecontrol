@@ -57,9 +57,8 @@ public class TeslaClient {
     }
 
     public boolean openChargePortDoor() throws TeslaException {
-        executeCommand("wake", null);
         executeCommand("charge-port-open", null);
-        executeCommand("unlock", null);
+        executeCommand("unlock", null, false);
         return true;
     }
 
@@ -78,11 +77,14 @@ public class TeslaClient {
     }
 
     public void wakeup() throws TeslaException {
-        executeCommand("wake", null);
+        executeCommand("wake", null, false);
     }
 
-    public boolean stopCharging() throws TeslaException {
+    public boolean stopCharging(int amps) throws TeslaException {
         executeCommand("charging-stop", null);
+        if (amps >= 0) {
+            executeCommand("charging-set-amps", String.valueOf(amps), false);
+        }
         return true;
     }
 
@@ -92,7 +94,7 @@ public class TeslaClient {
     }
 
     public boolean isVehicleOnline() throws TeslaException {
-        String rsp = executeCommand("body-controller-state", null);
+        String rsp = executeCommand("body-controller-state", null, false);
         JsonObject responseObject = new JsonObject(rsp);
         //VEHICLE_SLEEP_STATUS_ASLEEP / VEHICLE_SLEEP_STATUS_AWAKE
         String vehicleSleepStatus = responseObject.getString("vehicleSleepStatus", "");
@@ -100,10 +102,22 @@ public class TeslaClient {
     }
 
     private String executeCommand(String command, String opt) throws TeslaException {
+        return executeCommand(command, opt, true);
+    }
+
+    private String executeCommand(String command, String opt, boolean wakeUpIfNotAwake) throws TeslaException {
+        if (wakeUpIfNotAwake && !isVehicleOnline()) {
+            wakeup();
+        }
         synchronized (commandLock) {
             try {
                 LOGGER.info("executing command: " + command + " " + (opt != null ? opt + " " : ""));
-                ProcessBuilder builder = new ProcessBuilder("./tesla-control", "-ble", "-debug", command);
+                ProcessBuilder builder = new ProcessBuilder("./tesla-control",
+                        "-ble",
+                        "-debug",
+                        "-command-timeout", "40s",
+                        "-connect-timeout", "20s",
+                        command);
                 if (opt != null) {
                     builder.command().add(opt);
                 }
@@ -115,8 +129,27 @@ public class TeslaClient {
                 Process p = builder.start();
                 p.waitFor(2, TimeUnit.MINUTES);
                 if (p.exitValue() != 0) {
-                    String error = p.errorReader().lines().collect(Collectors.joining("\n"));
-                    LOGGER.warning("Error sending BLE command " + error);
+                    String error = "";
+//                    String error = p.errorReader().lines().collect(Collectors.joining("\n"));
+                    String l;
+                    BufferedReader r = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+                    while((l=r.readLine())!=null) {
+                        error += l;
+                        LOGGER.warning("Read output line: "+l);
+                        if (l.equals("Error: the vehicle is already connected to the maximum number of BLE devices")) {
+                            throw new TeslaException(409, "command returned " + p.exitValue());
+                        }
+                    }
+                    r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                    while((l=r.readLine())!=null) {
+                        error += l;
+                        LOGGER.warning("Read output line: "+l);
+                        if (l.equals("Error: the vehicle is already connected to the maximum number of BLE devices")) {
+                            throw new TeslaException(409, "command returned " + p.exitValue());
+                        }
+                    }
+                    LOGGER.warning("Error sending BLE command "+command+ " "+error);
+
                     throw new TeslaException(408, "command returned " + p.exitValue());
                 }
                 BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));

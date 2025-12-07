@@ -10,7 +10,7 @@ public interface ElectricVehicle {
 
     void startCharging() throws EVException;
 
-    void stopCharging() throws EVException;
+    void stopCharging(int amps) throws EVException;
 
     void changeChargingAmps(int amps) throws EVException;
 

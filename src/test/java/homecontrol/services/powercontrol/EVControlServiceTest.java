@@ -47,14 +47,14 @@ public class EVControlServiceTest {
     public void testChangeCharging3() throws EVException {
         preset(50, 2000);
         evControlService.changeCharging(0);
-        verify(electricVehicle).stopCharging();
+        verify(electricVehicle).stopCharging(5);
     }
 
     @Test
     public void testChangeCharging4() throws EVException {
         preset(50, 1100);
         evControlService.changeCharging(5);
-        verify(electricVehicle, never()).stopCharging();
+        verify(electricVehicle, never()).stopCharging(5);
         verify(electricVehicle, never()).changeChargingAmps(Mockito.anyInt());
     }
 
@@ -62,7 +62,7 @@ public class EVControlServiceTest {
     public void testChangeCharging5() throws EVException {
         preset(50, 1100);
         evControlService.changeCharging(36);
-        verify(electricVehicle, never()).stopCharging();
+        verify(electricVehicle, never()).stopCharging(5);
         verify(electricVehicle).changeChargingAmps(32);
     }
 

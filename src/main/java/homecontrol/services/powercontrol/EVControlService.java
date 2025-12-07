@@ -103,7 +103,7 @@ public class EVControlService {
                 LOGGER.log(Level.INFO, "Tesla does not have to charge");
                 if (currentlyCharging) {
                     action = "STOPPED";
-                    electricVehicle.stopCharging();
+                    electricVehicle.stopCharging(5);
                     electricVehicle.changeChargingAmps(5);
                 }
             }
@@ -111,7 +111,6 @@ public class EVControlService {
                 metricsLogger.logEVCharging(action, powerA);
             }
         } catch (EVException e) {
-            notificationService.sendNotification("could not contact tesla "+e);
             throw new RuntimeException(e);
         }
     }

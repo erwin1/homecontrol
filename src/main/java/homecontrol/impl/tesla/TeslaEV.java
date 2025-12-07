@@ -119,7 +119,8 @@ public class TeslaEV implements ElectricVehicle {
             LOGGER.fine("checking if vehicle is online");
             return teslaClient.isVehicleOnline();
         } catch (TeslaException e) {
-            throw handleTeslaException(e);
+            LOGGER.warning("exception while checking if vehicle is online "+e);
+            return false;
         }
     }
 
@@ -137,9 +138,9 @@ public class TeslaEV implements ElectricVehicle {
 
     @Override
     @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
-    public void stopCharging() throws EVException {
+    public void stopCharging(int amps) throws EVException {
         try {
-            teslaClient.stopCharging();
+            teslaClient.stopCharging(amps);
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
@@ -190,18 +191,6 @@ public class TeslaEV implements ElectricVehicle {
     }
 
     private EVException handleTeslaException(TeslaException e) {
-        if (e.getCode() == 408) {
-            try {
-                LOGGER.info("trying to wake-up tesla");
-                teslaClient.wakeup();
-            } catch (TeslaException ex) {
-                LOGGER.log(Level.SEVERE, "error in tesla wakeup", ex);
-//                notificationService.sendNotification("error in tesla wake-up");
-            }
-        } else {
-            LOGGER.log(Level.SEVERE, "unexpected error in tesla call", e);
-//            notificationService.sendNotification("unexpected error in tesla call "+e);
-        }
         return new EVException(e);
     }
 }
