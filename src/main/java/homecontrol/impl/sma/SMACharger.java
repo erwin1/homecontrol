@@ -2,6 +2,7 @@ package homecontrol.impl.sma;
 
 import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.StateRefresh;
+import homecontrol.services.powercontrol.EVControlService;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -14,10 +15,17 @@ import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.net.URLConnection;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class SMACharger implements Charger {
+    public static final Logger LOGGER = Logger.getLogger(SMACharger.class.getName());
 
     @ConfigProperty(name = "EVCHARGING_CHARGER_IP")
     String chargerIp;
@@ -65,6 +73,75 @@ public class SMACharger implements Charger {
         return (int) getConsumptionMeterReading();
     }
 
+    public void startCharging() {
+        String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
+        put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4718\"}]}");
+    }
+
+    @Override
+    public void stopCharging() {
+        String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
+        put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4721\"}]}");
+    }
+
+    @Override
+    public void changeChargingAmps(int amps) {
+        int powerW = amps * 230;
+        if (powerW < 1380) {
+            powerW = 1380;
+        }
+        if (amps == 32 || powerW > 7400) {
+            powerW = 7400;
+        }
+        LOGGER.log(Level.INFO, "change amps to "+amps+"A converted to "+powerW+"W");
+        String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
+        put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4718\"},{\"channelId\":\"Parameter.Inverter.WMaxIn\",\"timestamp\":\""+d+"\",\"value\":"+powerW+"}]}");
+    }
+
+    private void put(String body) {
+        try {
+            if (token == null) {
+                token = authenticate();
+            }
+            HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/parameters/IGULD:SELF");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer "+token);
+            conn.setRequestMethod("PUT");
+            conn.setRequestProperty("Sec-Fetch-Dest", "empty");
+            conn.setRequestProperty("Sec-Fetch-Mode", "cors");
+            conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
+            conn.setRequestProperty("User-Agent", "homecontrol");
+
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+            writer.write(body);
+            writer.flush();
+
+
+            if (conn.getResponseCode() == 401) {
+                token = null;
+                throw new RuntimeException("auth error");
+            }
+            if (conn.getResponseCode() == 204) {
+                return;//OK
+            }
+
+            body = new String(conn.getInputStream().readAllBytes());
+            conn.getInputStream().close();
+            JsonObject object = new JsonObject(body);
+
+            if (object.getString("err") != null) {
+                throw new RuntimeException("error from charger "+object.getString("err"));
+            }
+
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public State getStateInternal() {
         try {
             if (token == null) {
@@ -94,51 +171,6 @@ public class SMACharger implements Charger {
             throw new RuntimeException(e);
         }
     }
-
-//    public List<MeterReading> getHistoricalReadings(ZonedDateTime startTime, ZonedDateTime endTime, String res) {
-//        try {
-//            if (token == null) {
-//                token = authenticate();
-//            }
-//            HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/measurements/search/");
-//            conn.setDoOutput(true);
-//            conn.setRequestProperty("Content-Type", "application/json");
-//            conn.setRequestProperty("Accept", "application/json");
-//            conn.setRequestProperty("Authorization", "Bearer "+token);
-//
-//            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-//            String resolution = "";
-//            if (res != null) {//OneDay
-//                resolution = "\"resolution\":\""+res+"\",";
-//            }
-//            String aggregate = "";
-////            String aggregate = "Avg";
-////            String aggregate = "Dif";
-//            writer.write("{\"queryItems\":[{\"componentId\":\"Plant:1\",\"channelId\":\"Measurement.Metering.GridMs.TotWhIn.ChaSta\",\"timezone\":\"Europe/Brussels\","+resolution+"\"aggregate\":\""+aggregate+"\",\"multiAggregate\":\"Sum\"}],\"dateTimeBegin\":\""+startTime.withZoneSameInstant(ZoneId.of("Z")).format(DateTimeFormatter.ISO_ZONED_DATE_TIME)+"\",\"dateTimeEnd\":\""+endTime.withZoneSameInstant(ZoneId.of("Z")).format(DateTimeFormatter.ISO_ZONED_DATE_TIME)+"\"}");
-//            writer.flush();
-//
-//            if (conn.getResponseCode() == 401) {
-//                token = null;
-//                throw new RuntimeException();
-//            }
-//            String body = new String(conn.getInputStream().readAllBytes());
-//            conn.getInputStream().close();
-//            JsonArray array = new JsonArray(body);
-//            JsonArray values = array.getJsonObject(0).getJsonArray("values");
-//            List<MeterReading> list = new LinkedList<>();
-//            for(int i = 0; i < values.size(); i++) {
-//                if (values.getJsonObject(i).containsKey("value")) {
-//                    list.add(new MeterReading(ZonedDateTime.parse(values.getJsonObject(i).getString("time")),
-//                            values.getJsonObject(i).getInteger("value") / 4 * 4));
-//                }
-//            }
-//            return list;
-//        } catch (RuntimeException e) {
-//            throw e;
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
 
     public long getConsumptionMeterReading() {
         return getReadingByKey("Measurement.Metering.GridMs.TotWhIn.ChaSta") + consumptionMeterOffset;

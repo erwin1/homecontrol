@@ -1,6 +1,7 @@
 package homecontrol.services.powercontrol;
 
 import homecontrol.metrics.MetricsLogger;
+import homecontrol.services.config.ConfigService;
 import homecontrol.services.ev.*;
 import homecontrol.services.notications.NotificationService;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -20,8 +21,15 @@ public class EVControlService {
 
     @Inject
     private MetricsLogger metricsLogger;
+    @Inject
+    private ConfigService configService;
+
+    @Inject
+    private Charger charger;
 
     private Charger.State chargerState;
+
+    private Integer currentPowerA;
 
     public EVState getCurrentState(StateRefresh refresh) throws EVException {
         return electricVehicle.getCurrentState(refresh);
@@ -50,68 +58,19 @@ public class EVControlService {
     }
 
     public void changeCharging(int powerA) {
-        try {
-            EVState chargeState = electricVehicle.getCurrentState(StateRefresh.CACHED);
-
-            int currentAmps = chargeState.getCharge_amps();
-
-            if ((currentAmps == powerA && chargeState.getCharging_state().equals("Charging"))
-                || (powerA == 0 && chargeState.getCharging_state().equals("Stopped"))) {
-                LOGGER.log(Level.INFO, "no power difference. leave everything as it is.");
-                return;
+        boolean haveToCharge = powerA >= configService.getMinimumChargingA();
+        LOGGER.log(Level.INFO,"haveToCharge=" + haveToCharge+ " currentPowerA="+currentPowerA+" powerA="+powerA+" chargetState="+chargerState);
+        if (haveToCharge) {
+            if (currentPowerA == null || powerA != currentPowerA.intValue()) {
+                metricsLogger.logEVCharging("CHANGEAMPS", powerA);
+                charger.changeChargingAmps(powerA);
+                currentPowerA = powerA;
             }
-
-            int maxAmps = chargeState.getCharge_current_request_max();
-            boolean currentlyCharging = chargeState.getCharging_state().equals("Charging")
-                    || chargeState.getCharging_state().equals("Starting");
-
-            boolean haveToCharge = false;
-
-            LOGGER.log(Level.INFO, "Tesla charging state {0}\n" +
-                    "\tCurrent amps: {1}A\n" +
-                    "\tBattery level: {2}%\n" +
-                    "\tCharge limit soc: {3}%\n" +
-                    "\tMax amps: {4}\n" +
-                    "\tCurrently charging: {5}\n" +
-                    "\tCharge amps: {6}A", new Object[]{
-                    chargeState.getCharging_state(),
-                    currentAmps,
-                    chargeState.getBattery_level(),
-                    chargeState.getCharge_limit_soc(),
-                    maxAmps,
-                    currentlyCharging,
-                    powerA});
-
-            haveToCharge = powerA >= 5;
-            powerA = Math.min(powerA, chargeState.getCharge_current_request_max());
-
-            String action = null;
-            if (haveToCharge) {
-                LOGGER.log(Level.INFO, "Tesla has to charge at {0}A", powerA);
-                if (!currentlyCharging) {
-                    currentAmps = 0;
-                    electricVehicle.startCharging();
-                    action = "STARTED";
-                }
-                if (currentAmps != powerA) {
-                    electricVehicle.changeChargingAmps(powerA);
-                    if (action == null) {
-                        action = "CHANGE_AMPS";
-                    }
-                }
-            } else {
-                LOGGER.log(Level.INFO, "Tesla does not have to charge");
-                if (currentlyCharging) {
-                    action = "STOPPED";
-                    electricVehicle.stopCharging(5);
-                    electricVehicle.changeChargingAmps(5);
-                }
+        } else {
+            if (chargerState.equals(Charger.State.InProgress)) {
+                charger.stopCharging();
+                metricsLogger.logEVCharging("STOP", powerA);
             }
-            if (action != null) {
-                metricsLogger.logEVCharging(action, powerA);
-            }
-        } catch (EVException e) {
-            throw new RuntimeException(e);
         }
     }
 

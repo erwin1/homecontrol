@@ -1,5 +1,6 @@
 package homecontrol.services.powercontrol;
 
+import homecontrol.metrics.MetricsLogger;
 import homecontrol.services.config.*;
 import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.EVException;
@@ -40,6 +41,11 @@ public class PowerControlServiceTest {
     private ElectricVehicle electricVehicle;
     @InjectMock
     private NotificationService notificationService;
+    @InjectMock
+    private MetricsLogger metricsLogger;
+
+    @Inject
+    private EVControlService evControlService;
 
     @Inject
     private PowerControlService powerControlService;
@@ -58,9 +64,9 @@ public class PowerControlServiceTest {
 
     @Test
     public void testExp2() throws EVException {
-        presetState(TimeType.PEAK, 2000, 800, 1500, 0, 50);
+        presetState(TimeType.PEAK, 2100, 800, 1700, 0, 50);
         powerControlService.controlEVCharging();
-        checkKeepsChargingAt(5);
+        checkKeepsChargingAt(6);
     }
 
     @Test
@@ -109,7 +115,7 @@ public class PowerControlServiceTest {
     public void testMax2() throws EVException {
         presetState(TimeType.OFF, 4800, 800, 0, 0, 50);
         powerControlService.controlEVCharging();
-        checkChargingStartedAt(32);
+        checkChargingStartedAt(36);
     }
 
     @Test
@@ -128,9 +134,9 @@ public class PowerControlServiceTest {
 
     @Test
     public void testMax5() throws EVException {
-        presetState(ZonedDateTime.parse("2023-10-28T11:10:00+02:00"), 1000, 500, 2000, 3800, 50, 4000);
+        presetState(ZonedDateTime.parse("2023-10-28T11:10:00+02:00"), 1000, 500, 2000, 3700, 50, 4000);
         powerControlService.controlEVCharging();
-        checkKeepsChargingAt(5);
+        checkKeepsChargingAt(6);
     }
 
     @Test
@@ -149,38 +155,38 @@ public class PowerControlServiceTest {
         int avg = (4500-1000+500)/60*4;
         System.out.println("avg = " + avg);
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:01:00+02:00"), 1000, 500, 4500, avg, 50, 4000);
         powerControlService.controlEVCharging();
         checkNoChange();
 
         avg+=(4500-1000+500)/60*4;
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:02:00+02:00"), 1000, 500, 4500, avg, 50, 4000);
         powerControlService.controlEVCharging();
         checkNoChange();
 
         avg+=(4500-1000+500)/60*4;
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:03:00+02:00"), 1000, 2000, 4500, avg, 50, 4000);
         powerControlService.controlEVCharging();
         checkKeepsChargingAt(13);
 
         avg+=(2860-1000+2000)/60*4;
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:04:00+02:00"), 1000, 2000, 2860, avg, 50, 4000);
         powerControlService.controlEVCharging();
         checkNoChange();
 
         avg+=(2860-1000+2000)/60*4;
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:05:00+02:00"), 5000, 1500, 2860, avg, 50, 4000);
         powerControlService.controlEVCharging();
-        checkKeepsChargingAt(32);
+        checkKeepsChargingAt(34);
     }
 
     @Test
@@ -188,48 +194,45 @@ public class PowerControlServiceTest {
         presetState(ZonedDateTime.parse("2023-10-28T11:00:47+02:00"), 0, 410, 3026, 183, 50, 3380, 228);
         powerControlService.controlEVCharging();
         checkNoChange();
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
 
-        Mockito.clearInvocations(electricVehicle);
+//        Mockito.clearInvocations(electricVehicle);
         presetState(ZonedDateTime.parse("2023-10-28T11:01:47+02:00"), 0, 412, 3042, 413, 50, 3380, 228);
         powerControlService.controlEVCharging();
         checkKeepsChargingAt(12);
-        Mockito.clearInvocations(electricVehicle);
+//        Mockito.clearInvocations(electricVehicle);
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:11:47+02:00"), 0, 234, 3020, 2667, 50, 3380, 228);
         powerControlService.controlEVCharging();
         checkNoChange();
-        Mockito.clearInvocations(electricVehicle);
+//        Mockito.clearInvocations(electricVehicle);
 
-        Mockito.clearInvocations(electricVehicle);
+        Mockito.clearInvocations(charger);
         presetState(ZonedDateTime.parse("2023-10-28T11:13:47+02:00"), 0, 168, 3259, 3121, 50, 3380, 228);
         powerControlService.controlEVCharging();
         checkKeepsChargingAt(13);
-        Mockito.clearInvocations(electricVehicle);
+//        Mockito.clearInvocations(electricVehicle);
     }
 
     public void checkChargingStartedAt(int amps) throws EVException {
-        Mockito.verify(electricVehicle).startCharging();
-        Mockito.verify(electricVehicle, Mockito.never()).stopCharging(5);
-        Mockito.verify(electricVehicle).changeChargingAmps(Mockito.eq(amps));
+//        Mockito.verify(charger).startCharging();
+        Mockito.verify(charger, Mockito.never()).stopCharging();
+        Mockito.verify(charger).changeChargingAmps(Mockito.eq(amps));
     }
 
     public void checkChargingStopped() throws EVException {
-        Mockito.verify(electricVehicle, Mockito.never()).startCharging();
-        Mockito.verify(electricVehicle).stopCharging(5);
+        Mockito.verify(charger).stopCharging();
     }
 
     public void checkNoChange() throws EVException {
-        Mockito.verify(electricVehicle, Mockito.never()).startCharging();
-        Mockito.verify(electricVehicle, Mockito.never()).stopCharging(5);
-        Mockito.verify(electricVehicle, Mockito.never()).changeChargingAmps(Mockito.anyInt());
+        Mockito.verify(charger, Mockito.never()).stopCharging();
+        Mockito.verify(charger, Mockito.never()).changeChargingAmps(Mockito.anyInt());
     }
 
     public void checkKeepsChargingAt(int amps) throws EVException {
-        Mockito.verify(electricVehicle, Mockito.never()).startCharging();
-        Mockito.verify(electricVehicle, Mockito.never()).stopCharging(5);
-        Mockito.verify(electricVehicle).changeChargingAmps(Mockito.eq(amps));
+        Mockito.verify(charger, Mockito.never()).stopCharging();
+        Mockito.verify(charger).changeChargingAmps(Mockito.eq(amps));
     }
 
     private void presetState(TimeType timeType, int solarYield, int powerUsageWithoutEV, int powerUsageEVCharging, int activePowerAverage, int currentBatteryLevel) throws EVException {
@@ -248,11 +251,11 @@ public class PowerControlServiceTest {
 
     private void presetState(ZonedDateTime ts, int solarYield, int powerUsageWithoutEV, int powerUsageEVCharging, int activePowerAverage, int currentBatteryLevel, int maxPeak, int activeVoltage) throws EVException {
         QuarkusMock.installMockForType(Clock.fixed(ts.toInstant(), ZoneId.systemDefault()), Clock.class);
-        Mockito.when(charger.getCurrentState(Mockito.any())).thenReturn(Charger.State.Waiting);
+        Mockito.when(charger.getCurrentState(Mockito.any())).thenReturn(powerUsageEVCharging > 0 ? Charger.State.InProgress : Charger.State.Waiting);
         Mockito.when(configService.getPeakStrategy()).thenReturn(PeakStrategy.STATIC_LIMITED);
         Mockito.when(configService.getMax15minPeak()).thenReturn(maxPeak);
         Mockito.when(configService.getEVChargingConfigs()).thenReturn(powerConfig());
-        Mockito.when(configService.getMinimumChargingA()).thenReturn(5);
+        Mockito.when(configService.getMinimumChargingA()).thenReturn(6);
         Mockito.when(configService.getCurrentMode()).thenReturn(Mode.ON);
 
         int activePower = powerUsageEVCharging + powerUsageWithoutEV - solarYield;
@@ -269,6 +272,10 @@ public class PowerControlServiceTest {
         Mockito.when(electricVehicle.getCurrentState(Mockito.any())).thenReturn(evState);
         Mockito.when(electricVehicle.isVehicleOnline()).thenReturn(true);
 
+        if (powerUsageEVCharging > 1380) {
+            evControlService.changeCharging(powerUsageEVCharging / 220);
+        }
+        Mockito.clearInvocations(charger);
 
         Mockito.when(electricalPowerMeter.getActivePower()).thenReturn(Uni.createFrom().item(new ActivePower(ts, activePower, activePowerAverage, new BigDecimal(activeVoltage))));
         Mockito.when(inverter.getCurrentYield()).thenReturn(Uni.createFrom().item(solarYield));

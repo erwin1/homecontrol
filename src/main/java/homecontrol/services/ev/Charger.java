@@ -16,4 +16,8 @@ public interface Charger {
 
     int getChargingMeterReading();
 
+    void changeChargingAmps(int amps);
+
+    void stopCharging();
+
 }
