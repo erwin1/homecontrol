@@ -25,6 +25,8 @@ public class SMACharger implements Charger {
     String chargerUserName;
     @ConfigProperty(name = "EVCHARGING_CHARGER_PASSWORD")
     String chargerPassword;
+    @ConfigProperty(name = "EVCHARGING_CONSUMPTIONMETER_OFFSET", defaultValue = "0")
+    long consumptionMeterOffset;
 
     private String token;
 
@@ -139,7 +141,7 @@ public class SMACharger implements Charger {
 //    }
 
     public long getConsumptionMeterReading() {
-        return getReadingByKey("Measurement.Metering.GridMs.TotWhIn.ChaSta");
+        return getReadingByKey("Measurement.Metering.GridMs.TotWhIn.ChaSta") + consumptionMeterOffset;
     }
 
     public long getLivePowerMeterReading() {
