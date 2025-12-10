@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 public class PowerCalculator {
     public static final Logger LOGGER = Logger.getLogger(PowerCalculator.class.getName());
 
-    public int calculateOptimalChargingA(EVChargingStrategy chargingStrategy, ActivePower activePower, int currentMonth15minPeak, int solarYieldW, int chargingW, int currentChargingA, int minimumChargingA) {
+    public int calculateOptimalChargingA(EVChargingStrategy chargingStrategy, ActivePower activePower, int currentMonth15minPeak, int solarYieldW, int chargingW, int minimumChargingA) {
         ZonedDateTime startOfPeriod = activePower.getTimestamp().minusMinutes(activePower.getTimestamp().getMinute() % 15).withSecond(0).withNano(0);
         long startOfPeriodEpoch = startOfPeriod.toEpochSecond();
 
@@ -39,6 +39,8 @@ public class PowerCalculator {
 
         int exportWhenChargingIsExcluded = Math.max(0, chargingW - activePower.getActivePower());
 
+        int currentChargeAmps = Math.round(chargingW/voltage);
+
         int chargeAtAmps = switch (chargingStrategy.getType()) {
             case EXP -> Math.round(exportWhenChargingIsExcluded / voltage);
             case MAX -> (int)((chargingW + powerDifferenceW)/voltage);
@@ -46,8 +48,8 @@ public class PowerCalculator {
                 int newChargingAmps = (int)((chargingW + powerDifferenceW)/voltage);
 
                 if (passedTimeInSec < 60) {
-                    if (currentChargingA > 0) {
-                        yield currentChargingA;
+                    if (chargingW > 0) {
+                        yield currentChargeAmps;
                     }
                 }
                 if (passedTimeInSec < 120) {
@@ -55,10 +57,10 @@ public class PowerCalculator {
                         yield newChargingAmps - 1;
                     }
                 }
-                if (currentChargingA > 0) {
-                    int diffAmps = newChargingAmps - currentChargingA;
+                if (chargingW > 0) {
+                    int diffAmps = newChargingAmps - currentChargeAmps;
                     if (diffAmps > 0) {
-                        newChargingAmps = currentChargingA;
+                        newChargingAmps = currentChargeAmps;
                     }
                 }
                 yield newChargingAmps;

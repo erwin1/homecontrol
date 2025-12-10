@@ -49,6 +49,10 @@ public class EVControlService {
                 }
             }
             if (enable != null) {
+                if (enable) {
+                    LOGGER.info("disable charging so it does not start automatically on next plug-in");
+                    stopCharging(0);
+                }
                 this.chargerState = state;
                 return true;
             }
@@ -68,10 +72,15 @@ public class EVControlService {
             }
         } else {
             if (chargerState.equals(Charger.State.InProgress)) {
-                charger.stopCharging();
-                metricsLogger.logEVCharging("STOP", powerA);
+                stopCharging(powerA);
             }
         }
+    }
+
+    private void stopCharging(int powerA) {
+        charger.stopCharging();
+        currentPowerA = null;
+        metricsLogger.logEVCharging("STOP", powerA);
     }
 
 }

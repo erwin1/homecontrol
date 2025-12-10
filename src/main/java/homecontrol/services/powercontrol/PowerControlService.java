@@ -103,7 +103,6 @@ public class PowerControlService {
                     powerPeakService.getCurrentMonth15minPeak(),
                     tuple.getItem2(),
                     tuple.getItem3(),
-                    evState.getCharge_amps(),
                     configService.getMinimumChargingA());
 
             //STAP 4
