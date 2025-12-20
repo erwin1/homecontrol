@@ -2,6 +2,7 @@ package homecontrol.metrics;
 
 import homecontrol.services.ev.*;
 import homecontrol.services.notications.NotificationService;
+import homecontrol.services.powercontrol.EVControlService;
 import homecontrol.services.powercontrol.PowerPeakService;
 import homecontrol.services.powermeter.ActivePower;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
@@ -13,6 +14,7 @@ import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
@@ -50,7 +52,7 @@ public class MetricsService {
     PowerPeakService powerPeakService;
 
     @Inject
-    ElectricVehicle ev;
+    EVControlService evControlService;
 
     @Inject
     NotificationService notificationService;
@@ -138,11 +140,15 @@ public class MetricsService {
         metrics.setEvW(new BigDecimal(chargerW));
         metrics.setPvW(new BigDecimal(currentYield));
         metrics.setEvConnected(!charger.getCurrentState(StateRefresh.CACHED).equals(Charger.State.NotConnected));
-        try {
-            EVState evState = ev.getCurrentState(StateRefresh.CACHED_OR_NULL);
-            metrics.setEvBatteryLevel(evState != null ? evState.getBattery_level() : 0);
-        } catch (EVException e) {
-            throw new RuntimeException(e);
+        if (metrics.isEvConnected()) {
+            ElectricVehicle connectedEv = evControlService.getConnectedVehicle();
+            metrics.setEvConnectedName(connectedEv != null ? connectedEv.getName() : "Unknown");
+            try {
+                EVState evState = evControlService.getCurrentState(StateRefresh.CACHED_OR_NULL);
+                metrics.setEvBatteryLevel(evState != null ? evState.getBattery_level() : 0);
+            } catch (EVException e) {
+                throw new RuntimeException(e);
+            }
         }
         metrics.setMonthlyPowerPeakW(new BigDecimal(monthlyPowerPeak.getValue()));
         metrics.setMonthlyPowerPeakTimestamp(monthlyPowerPeak.getTimestamp());

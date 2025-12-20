@@ -47,11 +47,12 @@ function refreshData() {
         if (d.evConnected) {
             $("#evconnected").show();
             $("#evnotconnected").hide();
+            $("#evbatterylevel").html(d.evConnectedName+" "+d.evBatteryLevel+" %");
         } else {
             $("#evconnected").hide();
             $("#evnotconnected").show();
+            $("#evbatterylevel").html("");
         }
-        $("#evbatterylevel").html(d.evBatteryLevel+" %");
         {
         let tsString = d.timestamp;
         let tIndex = tsString.indexOf("T");

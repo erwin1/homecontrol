@@ -7,10 +7,10 @@ import homecontrol.services.ev.EVException;
 import homecontrol.services.ev.EVState;
 import homecontrol.services.ev.ElectricVehicle;
 import homecontrol.services.notications.NotificationService;
-import homecontrol.services.powercontrol.EVControlService;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -19,7 +19,8 @@ import static org.mockito.Mockito.*;
 @QuarkusTest
 public class EVControlServiceTest {
     @InjectMock
-    private ElectricVehicle electricVehicle;
+    @Named("tesla")
+    private ElectricVehicle tesla;
     @InjectMock
     private NotificationService notificationService;
     @InjectMock
@@ -70,6 +71,9 @@ public class EVControlServiceTest {
     }
 
     private void preset(int batteryLevel, int power) throws EVException {
+        EVState teslaState = new EVState();
+        teslaState.setCharging_state("Connected");
+        when(tesla.getCurrentState(any())).thenReturn(teslaState);
         if (power > 0) {
             evControlService.handleChargerState(Charger.State.InProgress);
         } else {

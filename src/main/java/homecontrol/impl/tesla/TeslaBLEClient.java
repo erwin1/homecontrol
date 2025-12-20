@@ -10,7 +10,6 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * Code that can:
@@ -18,8 +17,8 @@ import java.util.stream.Collectors;
  *  - send commands
  *  from a Tesla vehicle via BLE using the tesla-control command
  */
-public class TeslaClient {
-    public static final Logger LOGGER = Logger.getLogger(TeslaClient.class.getName());
+public class TeslaBLEClient {
+    public static final Logger LOGGER = Logger.getLogger(TeslaBLEClient.class.getName());
 
     private static Object commandLock = new Object();
 
@@ -29,7 +28,7 @@ public class TeslaClient {
     private String sdkDir;
     private String cacheFile;
 
-    public TeslaClient(String vin, String keyName, String tokenName, String sdkDir, String cacheFile) {
+    public TeslaBLEClient(String vin, String keyName, String tokenName, String sdkDir, String cacheFile) {
         this.vin = vin;
         this.keyName = keyName;
         this.tokenName = tokenName;

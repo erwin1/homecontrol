@@ -12,6 +12,7 @@ public class LiveMetrics {
     private BigDecimal evW;
     private int evBatteryLevel;
     private boolean evConnected;
+    private String evConnectedName;
     private BigDecimal peakEstimateW;
     private BigDecimal monthlyPowerPeakW;
     private ZonedDateTime monthlyPowerPeakTimestamp;
@@ -62,6 +63,14 @@ public class LiveMetrics {
 
     public void setEvBatteryLevel(int evBatteryLevel) {
         this.evBatteryLevel = evBatteryLevel;
+    }
+
+    public String getEvConnectedName() {
+        return evConnectedName;
+    }
+
+    public void setEvConnectedName(String evConnectedName) {
+        this.evConnectedName = evConnectedName;
     }
 
     public boolean isEvConnected() {

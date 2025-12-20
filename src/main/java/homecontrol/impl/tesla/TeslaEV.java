@@ -10,6 +10,7 @@ import io.vertx.core.json.JsonObject;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Asynchronous;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -17,16 +18,20 @@ import org.eclipse.microprofile.faulttolerance.Retry;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @ApplicationScoped
+@Named("tesla")
 public class TeslaEV implements ElectricVehicle {
     public static final Logger LOGGER = Logger.getLogger(TeslaEV.class.getName());
 
     @Inject
     private MetricsLogger metricsLogger;
 
+    @ConfigProperty(name = "EVCHARGING_TESLA_NAME")
+    String name;
     @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE_VIN")
     String vin;
     @ConfigProperty(name = "EVCHARGING_TESLA_KEY_NAME")
@@ -37,18 +42,37 @@ public class TeslaEV implements ElectricVehicle {
     String cacheFile;
     @ConfigProperty(name = "EVCHARGING_TESLA_COMMAND_SDK")
     String sdkDir;
-    private TeslaClient teslaClient;
+    @ConfigProperty(name = "EVCHARGING_TESLA_REFRESHTOKEN")
+    String refreshToken;
+    @ConfigProperty(name = "EVCHARGING_TESLA_VEHICLE")
+    Optional<String> vehicle;
+
+    private TeslaAPIClient teslaAPIClient;
+
+    private TeslaBLEClient teslaBLEClient;
     private EVState currentState;
 
     @PostConstruct
     public void postConstruct() {
-        teslaClient = new TeslaClient(vin, keyName, tokenName, sdkDir, cacheFile);
+        if (isConfigured()) {
+            teslaBLEClient = new TeslaBLEClient(vin, keyName, tokenName, sdkDir, cacheFile);
+            teslaAPIClient = new TeslaAPIClient(refreshToken, vehicle.get());
+        }
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public boolean isConfigured() {
+        return vehicle.isPresent();
     }
 
     @Override
     @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public EVState getCurrentState(StateRefresh stateRefresh) throws EVException {
-        LOGGER.fine("getCurrentState "+stateRefresh);
         EVState state = switch (stateRefresh) {
             case CACHED_OR_NULL -> currentState;
             case CACHED -> getCurrentState(stateRefresh.getMaxCacheTimeIfOnline(), stateRefresh.getMaxCacheTime());
@@ -80,7 +104,7 @@ public class TeslaEV implements ElectricVehicle {
     private EVState refreshCurrentState() throws EVException {
         try {
             LOGGER.fine("refreshing state");
-            EVState state = teslaClient.getChargeState();
+            EVState state = teslaAPIClient.getChargeState();
             metricsLogger.logEVCharging("REFRESHED_STATE", state.getCharge_amps());
             return state;
         } catch (TeslaException e) {
@@ -89,11 +113,10 @@ public class TeslaEV implements ElectricVehicle {
     }
 
     private EVState refreshCurrentStateIfOnline() throws EVException {
-        LOGGER.fine("refreshCurrentStateIfOnline");
         try {
             if (isVehicleOnline()) {
                 LOGGER.fine("vehicle is online");
-                EVState state = teslaClient.getChargeState();
+                EVState state = teslaAPIClient.getChargeState();
                 metricsLogger.logEVCharging("REFRESHED_STATE_ONLINE", state.getCharge_amps());
                 return state;
             }
@@ -103,79 +126,16 @@ public class TeslaEV implements ElectricVehicle {
         return null;
     }
 
-    private void invalidateAndRefreshCacheIfOnline() {
-        try {
-            currentState = null;
-            refreshCurrentStateIfOnline();
-        }catch (EVException e) {
-            LOGGER.info("invalidated cache but could not refresh state.");
-        }
-    }
-
-    @Retry(maxRetries = 2, delay = 2, delayUnit = ChronoUnit.SECONDS)
-    @Override
     public boolean isVehicleOnline() throws EVException {
         try {
-            LOGGER.fine("checking if vehicle is online");
-            return teslaClient.isVehicleOnline();
-        } catch (TeslaException e) {
-            LOGGER.warning("exception while checking if vehicle is online "+e);
-            return false;
-        }
-    }
-
-
-    @Override
-    @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
-    public void startCharging() throws EVException {
-        try {
-            teslaClient.startCharging();
+            JsonObject vehicle = teslaAPIClient.getVehicle(this.vehicle.get());
+            if (vehicle.getJsonObject("response").getString("state").equals("online")) {
+                return true;
+            }
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
-        invalidateAndRefreshCacheIfOnline();
-    }
-
-    @Override
-    @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
-    public void stopCharging(int amps) throws EVException {
-        try {
-            teslaClient.stopCharging(amps);
-        } catch (TeslaException e) {
-            throw handleTeslaException(e);
-        }
-        invalidateAndRefreshCacheIfOnline();
-    }
-
-    @Override
-    @Retry(maxRetries = 2, delay = 30, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
-    public void changeChargingAmps(int amps) throws EVException {
-        try {
-            teslaClient.setChargingAmps(amps);
-        } catch (TeslaException e) {
-            throw handleTeslaException(e);
-        }
-        invalidateAndRefreshCacheIfOnline();
-    }
-
-    @Override
-    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
-    public void enableScheduledCharging() throws EVException {
-        try {
-            teslaClient.setScheduledCharging(true, 1320);
-        } catch (TeslaException e) {
-            throw handleTeslaException(e);
-        }
-    }
-
-    @Override
-    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
-    public void disableScheduledCharging() throws EVException {
-        try {
-            teslaClient.setScheduledCharging(false, 1320);
-        } catch (TeslaException e) {
-            throw handleTeslaException(e);
-        }
+        return false;
     }
 
     @Override
@@ -183,14 +143,32 @@ public class TeslaEV implements ElectricVehicle {
     @Asynchronous
     public Uni<Boolean> openChargePortDoor() throws EVException {
         try {
-            boolean result = teslaClient.openChargePortDoor();
+            boolean result = teslaBLEClient.openChargePortDoor();
             return Uni.createFrom().item(result);
         } catch (TeslaException e) {
             throw handleTeslaException(e);
         }
     }
 
+    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
+    public void debug() throws EVException {
+    }
+
     private EVException handleTeslaException(TeslaException e) {
+        if (e.getCode() == 401) {
+            teslaAPIClient.clearAccessToken();
+        } else if (e.getCode() == 408) {
+            try {
+                LOGGER.info("trying to wake-up tesla");
+                teslaAPIClient.wakeup();
+            } catch (TeslaException ex) {
+                LOGGER.log(Level.SEVERE, "error in tesla wakeup", ex);
+//                notificationService.sendNotification("error in tesla wake-up");
+            }
+        } else {
+            LOGGER.log(Level.SEVERE, "unexpected error in tesla call", e);
+//            notificationService.sendNotification("unexpected error in tesla call "+e);
+        }
         return new EVException(e);
     }
 }

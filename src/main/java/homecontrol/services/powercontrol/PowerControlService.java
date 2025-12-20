@@ -65,25 +65,21 @@ public class PowerControlService {
                 return;
             }
 
-            EVState evState = evControlService.getCurrentState(changedChargerState ? StateRefresh.REFRESH_ALWAYS : StateRefresh.CACHED);
-
-            if (isInconsistent(state, evState)) {
-                LOGGER.severe("inconsistent charging state. refreshing ev state.");
-                evState = evControlService.getCurrentState(StateRefresh.REFRESH_ALWAYS);
-                if (isInconsistent(state, evState)) {
-                    notificationService.sendNotification("Inconsistent charging/charger state: EV="+evState.getCharging_state()+" Charger="+state);
-                }
-            }
+            EVState evState = evControlService.getCurrentState(StateRefresh.CACHED);
 
             //STAP 1
-            if (evState.getBattery_level() >= evState.getCharge_limit_soc()) {
+            if (evState != null && evState.getBattery_level() >= evState.getCharge_limit_soc()) {
                 LOGGER.log(Level.INFO, "Already at charging limit.");
                 return;
             }
 
             //STAP 2
+            int currentBatteryLevel = 0;//default to 0% in case of unknown vehicle - so the charging strategy will be based on (off/)peak time only
+            if (evState != null) {
+                currentBatteryLevel = evState.getBattery_level();
+            }
             EVChargingStrategy evChargingStrategy = configService.getEVChargingConfigs().getEVChargingStrategy(
-                    evState.getBattery_level(),
+                    currentBatteryLevel,
                     TimeType.getTimeType(clock));
 
 
@@ -133,11 +129,6 @@ public class PowerControlService {
             return findCause(e.getCause());
         }
         return null;
-    }
-
-    private boolean isInconsistent(Charger.State state, EVState evState) {
-        return (evState.getCharging_state().equals("Charging") && !state.equals(Charger.State.InProgress)) ||
-                (!evState.getCharging_state().equals("Charging") && state.equals(Charger.State.InProgress));
     }
 
 

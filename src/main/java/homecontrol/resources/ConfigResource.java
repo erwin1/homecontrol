@@ -69,6 +69,11 @@ public class ConfigResource {
                                @FormParam("o2") EVChargingStrategy.Type o2,
                                @FormParam("o3") EVChargingStrategy.Type o3
                                ) {
+        if (mode.equals(Mode.OFF) && configService.getCurrentMode().equals(Mode.ON)) {
+            //when turned off, make sure to set default settings to the charger
+            charger.startCharging();
+            charger.changeChargingAmps(32);
+        }
         configService.setCurrentMode(mode);
         configService.setBatteryLevelX(batteryLevelX);
         configService.setBatteryLevelY(batteryLevelY);

@@ -4,19 +4,13 @@ import io.smallrye.mutiny.Uni;
 
 public interface ElectricVehicle {
 
+    String getName();
+
+    boolean isConfigured();
+
     EVState getCurrentState(StateRefresh stateRefresh) throws EVException;
 
-    boolean isVehicleOnline() throws EVException;
-
-    void startCharging() throws EVException;
-
-    void stopCharging(int amps) throws EVException;
-
-    void changeChargingAmps(int amps) throws EVException;
-
-    void enableScheduledCharging() throws EVException;
-
-    void disableScheduledCharging() throws EVException;
-
     Uni<Boolean> openChargePortDoor() throws EVException;
+
+    void debug() throws EVException;
 }
