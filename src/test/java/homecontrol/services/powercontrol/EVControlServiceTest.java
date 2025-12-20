@@ -22,6 +22,9 @@ public class EVControlServiceTest {
     @Named("tesla")
     private ElectricVehicle tesla;
     @InjectMock
+    @Named("volvo")
+    private ElectricVehicle volvo;
+    @InjectMock
     private NotificationService notificationService;
     @InjectMock
     private MetricsLogger metricsLogger;
@@ -73,7 +76,10 @@ public class EVControlServiceTest {
     private void preset(int batteryLevel, int power) throws EVException {
         EVState teslaState = new EVState();
         teslaState.setCharging_state("Connected");
+        EVState volvoState = new EVState();
+        volvoState.setCharging_state("Disconnected");
         when(tesla.getCurrentState(any())).thenReturn(teslaState);
+        when(volvo.getCurrentState(any())).thenReturn(volvoState);
         if (power > 0) {
             evControlService.handleChargerState(Charger.State.InProgress);
         } else {
