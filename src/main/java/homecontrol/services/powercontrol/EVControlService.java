@@ -40,7 +40,6 @@ public class EVControlService {
 
     public EVState getCurrentState(StateRefresh refresh) throws EVException {
         if (connectedVehicle == null) {
-            //no connected vehicle - a 3rd vehicle must be charging
             return null;
         }
         return connectedVehicle.getCurrentState(refresh);
@@ -51,11 +50,10 @@ public class EVControlService {
         for(ElectricVehicle ev : allVehicles) {
             if (ev.isConfigured()) {
                 try {
-                    EVState teslaState = ev.getCurrentState(StateRefresh.REFRESH_ALWAYS);
-                    if (!teslaState.getCharging_state().equalsIgnoreCase("Disconnected")) {
-                        if (selected != null && selected.getName().equalsIgnoreCase("Volvo")) {
-                            //prefer volvo
-                            notificationService.sendNotification("Detect Vehicle Conflict: More than 1 vehicles connected. Selecting Volvo.");
+                    EVState evState = ev.getCurrentState(StateRefresh.REFRESH_ALWAYS);
+                    if (!evState.getCharging_state().equalsIgnoreCase("Disconnected")) {
+                        if (selected != null) {
+                            notificationService.sendNotification("Detect Vehicle Conflict: More than 1 vehicle connected. Selected "+selected.getName());
                         } else {
                             selected = ev;
                         }
@@ -68,9 +66,12 @@ public class EVControlService {
 
         if (selected != null) {
             LOGGER.info("detected vehicle: "+selected.getName());
-            metricsLogger.logEVCharging("VEHICLE_DETECTED_"+selected.getName().toUpperCase(), 0);
             connectedVehicle = selected;
+        } else {
+            connectedVehicle = new OtherElectricVehicle();
         }
+        metricsLogger.logEVCharging("VEHICLE_DETECTED_"+connectedVehicle.getName().toUpperCase(), 0);
+        metricsLogger.logChargerDataPoint(connectedVehicle.getName());
     }
 
     public boolean handleChargerState(Charger.State newState) {

@@ -20,14 +20,12 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -93,18 +91,31 @@ public class MetricsService {
     public void sendEVMonthly() throws IOException {
         LOGGER.log(Level.INFO, "Creating monthly EV summary");
         ZonedDateTime lastMonthStart = ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0).withDayOfMonth(1).minusMonths(1);
-        List<CombinedMetrics> metrics = getCombinedMetrics(lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day");
-        CombinedMetrics totals = calculateTotals(metrics);
-        totals.getEV();
+        List<Metrics> metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), null, null);
+        List<String> labels = metrics.stream()
+                .filter(m -> m.getValuet1().compareTo(BigDecimal.ZERO) > 0 || m.getValuet2().compareTo(BigDecimal.ZERO) > 0)
+                .filter(m -> m.getLabel() != null)
+                .map(m -> m.getLabel())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
         StringBuilder text = new StringBuilder("EV charging usage ");
         text.append(lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy"))).append("\n");
         text.append("Charger: ").append(chargerName).append("\n");
         text.append("\n");
-        for(CombinedMetrics m : metrics) {
-            text.append(m.getTimestamp().format((DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
-            text.append("\t").append(m.getEV()).append(" kWh\n");
+        for (String label : labels) {
+            text.append("===============================\n");
+            text.append("Vehicle label: ").append(label).append("\n\n");
+            BigDecimal total = BigDecimal.ZERO;
+            metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", label);
+            for(Metrics m : metrics) {
+                BigDecimal day = m.getValuet1().add(m.getValuet2());
+                total = total.add(day);
+                text.append(m.getTimestamp().format((DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+                text.append("\t").append(day).append(" kWh\n");
+            }
+            text.append("\nTOTAL ").append(label).append(":\t\t").append(total).append(" kWh").append("\n\n");
         }
-        text.append("\nTOTAL:\t\t").append(totals.getEV()).append(" kWh").append("\n");
         mailer.send(
             Mail.withText(
                 reportTo,
@@ -158,7 +169,7 @@ public class MetricsService {
 
     public List<CombinedMetrics> getCombinedMetrics(ZonedDateTime start, ZonedDateTime end, String period) throws IOException {
         Map<ZonedDateTime, CombinedMetrics> combined = new HashMap<>();
-        List<Metrics> list = getMetrics("gridImport", start, end, period);
+        List<Metrics> list = getMetrics("gridImport", start, end, period, null);
         for(Metrics m : list) {
             combined.compute(m.getTimestamp(), (k,v) -> {
                if (v == null) {
@@ -170,7 +181,7 @@ public class MetricsService {
                return v;
             });
         }
-        list = getMetrics("gridExport", start, end, period);
+        list = getMetrics("gridExport", start, end, period, null);
         for(Metrics m : list) {
             combined.compute(m.getTimestamp(), (k,v) -> {
                 if (v == null) {
@@ -182,7 +193,7 @@ public class MetricsService {
                 return v;
             });
         }
-        list = getMetrics("charger", start, end, period);
+        list = getMetrics("charger", start, end, period, null);
         for(Metrics m : list) {
             combined.compute(m.getTimestamp(), (k,v) -> {
                 if (v == null) {
@@ -194,7 +205,7 @@ public class MetricsService {
                 return v;
             });
         }
-        list = getMetrics("pv", start, end, period);
+        list = getMetrics("pv", start, end, period, null);
         for(Metrics m : list) {
             combined.compute(m.getTimestamp(), (k,v) -> {
                 if (v == null) {
@@ -209,7 +220,29 @@ public class MetricsService {
         return combined.values().stream().sorted(Comparator.comparing(CombinedMetrics::getTimestamp)).collect(Collectors.toList());
     }
 
-    public List<Metrics> getMetrics(String type, ZonedDateTime start, ZonedDateTime end, String period) throws IOException {
+    public Map<String,BigDecimal> getEVTotalsGroupedByLabel(ZonedDateTime start, ZonedDateTime end) throws IOException {
+        List<Metrics> metrics = getMetrics("charger", start, end, null, null);
+        List<String> labels = metrics.stream()
+                .filter(m -> m.getValuet1().compareTo(BigDecimal.ZERO) > 0 || m.getValuet2().compareTo(BigDecimal.ZERO) > 0)
+                .filter(m -> m.getLabel() != null)
+                .map(m -> m.getLabel())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        Map<String, BigDecimal> result = new HashMap<>();
+        for (String label : labels) {
+            BigDecimal total = BigDecimal.ZERO;
+            for(Metrics m : metrics) {
+                if (label.equals(m.getLabel())) {
+                    total = total.add(m.getValuet1()).add(m.getValuet2());
+                }
+            }
+            result.put(label, total);
+        }
+        return result;
+    }
+
+    public List<Metrics> getMetrics(String type, ZonedDateTime start, ZonedDateTime end, String period, String label) throws IOException {
         List<Metrics> list = null;
         if (type.equals("gridImport")) {
             list = metricsLogger.getGridImport();
@@ -221,33 +254,53 @@ public class MetricsService {
             list = metricsLogger.getPv();
         }
 
-        if (period.equals("hour")) {
+        if (period == null) {
             return list.stream()
+                    .filter(m -> label == null || label.equals(m.getLabel()))
                     .filter(m -> (gte(m.getTimestamp(), start) && lte(m.getTimestamp(), end)))
                     .sorted(Comparator.comparing(Metrics::getTimestamp))
                     .collect(Collectors.toList());
+        } else if (period.equals("hour")) {
+            return filterAndGroupBy("hour", list, start, end, label);
         } else if (period.equals("day")) {
-            return filterAndGroupBy("day", list, start, end);
+            return filterAndGroupBy("day", list, start, end, label);
         } else if (period.equals("month")) {
-            return filterAndGroupBy("month", list, start, end);
+            return filterAndGroupBy("month", list, start, end, label);
         }
         return null;
     }
 
     private ZonedDateTime truncate(String type, ZonedDateTime t) {
-        t = t.truncatedTo(ChronoUnit.DAYS);
-        if (type.equals("month")) {
-            t = t.withDayOfMonth(1);
+        if (type.equals("hour")) {
+            t = t.truncatedTo(ChronoUnit.HOURS);
+        } else if (type.equals("day")) {
+            t = t.truncatedTo(ChronoUnit.DAYS);
+        } else if (type.equals("month")) {
+            t = t.truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1);
         }
         return t;
     }
 
-    public List<Metrics> filterAndGroupBy(String groupBy, List<Metrics> list, ZonedDateTime start, ZonedDateTime end) {
+    public List<Metrics> filterAndGroupBy(String groupBy, List<Metrics> list, ZonedDateTime start, ZonedDateTime end, String label) {
         final ZonedDateTime startTime = start.withHour(0).withMinute(0).withSecond(0).withNano(0);
         Map<ZonedDateTime, Integer> mapt1 = list.stream()
+                .map(m -> {
+                    if (label == null || label.equals(m.getLabel())) {
+                        return m;
+                    } else {
+                        return new Metrics(m.getTimestamp(), m.getPeriod(), BigDecimal.ZERO, BigDecimal.ZERO);
+                    }
+                })
                 .filter(m -> (gte(m.getTimestamp(), startTime) && lte(m.getTimestamp(), end)))
                 .collect(Collectors.groupingBy((e) -> truncate(groupBy, e.getTimestamp()), Collectors.summingInt(m -> m.getValuet1().multiply(new BigDecimal("1000")).intValue())));
         Map<ZonedDateTime, Integer> mapt2 = list.stream()
+                .map(m -> {
+                    if (label == null || label.equals(m.getLabel())) {
+                        return m;
+                    } else {
+                        return new Metrics(m.getTimestamp(), m.getPeriod(), BigDecimal.ZERO, BigDecimal.ZERO);
+                    }
+                })
                 .filter(m -> (gte(m.getTimestamp(), startTime) && lte(m.getTimestamp(), end)))
                 .collect(Collectors.groupingBy((e) -> truncate(groupBy, e.getTimestamp()), Collectors.summingInt(m -> m.getValuet2().multiply(new BigDecimal("1000")).intValue())));
         Map<ZonedDateTime, Metrics> map = new HashMap<>();

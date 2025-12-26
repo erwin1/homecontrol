@@ -8,12 +8,18 @@ public class Metrics {
     private String period;
     private BigDecimal valuet1;
     private BigDecimal valuet2;
+    private String label;
 
     public Metrics(ZonedDateTime timestamp, String period, BigDecimal valuet1, BigDecimal valuet2) {
+        this(timestamp, period, valuet1, valuet2, null);
+    }
+
+    public Metrics(ZonedDateTime timestamp, String period, BigDecimal valuet1, BigDecimal valuet2, String label) {
         this.timestamp = timestamp;
         this.period = period;
         this.valuet1 = valuet1;
         this.valuet2 = valuet2;
+        this.label= label;
     }
 
     public ZonedDateTime getTimestamp() {
@@ -46,5 +52,14 @@ public class Metrics {
 
     public void setValuet2(BigDecimal valuet2) {
         this.valuet2 = valuet2;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public Metrics setLabel(String label) {
+        this.label = label;
+        return this;
     }
 }

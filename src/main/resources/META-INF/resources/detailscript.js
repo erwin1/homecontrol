@@ -75,10 +75,16 @@ function updateCharts( data, labelFormatter ) {
     totalRatioChart.data = totalData;
     totalRatioChart.update();
 
+    var ev = "";
+    for (const label in data.evPerLabel) {
+      ev += label+": "+data.evPerLabel[label]+" kWh <br>";
+    }
+
     $("#totalpv").html(data.totals.pv+" kWh");
     $("#totalgridin").html(data.totals.import+" kWh");
     $("#totalgridout").html(data.totals.export+" kWh");
     $("#totalev").html(data.totals.ev+" kWh");
+    $("#evdetail").html(ev);
     $("#totalgridinnoev").html(Math.round((data.totals.import - data.totals.ev) * 100) / 100+" kWh");
     $("#totalhome").html(data.totals.totalUsageWithoutEV+" kWh");
 

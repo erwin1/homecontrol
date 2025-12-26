@@ -1,8 +1,9 @@
 package homecontrol.metrics;
 
-
 import homecontrol.services.ev.Charger;
+import homecontrol.services.ev.ElectricVehicle;
 import homecontrol.services.notications.NotificationService;
+import homecontrol.services.powercontrol.EVControlService;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
 import homecontrol.services.powermeter.MeterReading;
 import homecontrol.services.solar.Inverter;
@@ -33,8 +34,14 @@ public class MetricsLogger {
     @ConfigProperty(name = "METRICSLOGGER_DATA")
     Optional<String> dataPath;
 
+    @ConfigProperty(name = "METRICSLOGGER_LABEL_IF_UNKNOWN")
+    String labelIfUnknown;
+
     @Inject
     ElectricalPowerMeter powerMeter;
+
+    @Inject
+    private EVControlService evControlService;
 
     @Inject
     Charger evCharger;
@@ -133,9 +140,14 @@ public class MetricsLogger {
 
         try {
             long chargerReading = evCharger.getChargingMeterReading();
+            String label = "none";
+            ElectricVehicle connectedVehicle = evControlService.getConnectedVehicle();
+            if (connectedVehicle != null) {
+                label = connectedVehicle.getName();
+            }
             Path charger = path.resolve("total_power_charger_kwh.csv");
             try (BufferedWriter writer = Files.newBufferedWriter(charger, StandardOpenOption.CREATE,StandardOpenOption.APPEND)) {
-                writer.write(tsString+","+ chargerReading+"\n");
+                writer.write(tsString+","+ chargerReading+","+label+"\n");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -196,6 +208,29 @@ public class MetricsLogger {
         return combined.values().stream().sorted(Comparator.comparing(Metrics::getTimestamp)).collect(Collectors.toList());
     }
 
+    public void logChargerDataPoint(String label) {
+        if (!dataPath.isPresent()) {
+            LOGGER.severe("no data logger defined. not logging.");
+            return;
+        }
+        LOGGER.log(Level.INFO, "Logging charging data point");
+
+        Path path = Path.of(dataPath.get());
+        String tsString = ZonedDateTime.now().withZoneSameInstant(ZoneId.of("Europe/Brussels")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZZ"));
+
+        try {
+            long chargerReading = evCharger.getChargingMeterReading();
+
+            Path charger = path.resolve("total_power_charger_kwh.csv");
+            try (BufferedWriter writer = Files.newBufferedWriter(charger, StandardOpenOption.CREATE,StandardOpenOption.APPEND)) {
+                writer.write(tsString+","+ chargerReading+","+label+"\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            notificationService.sendNotification("MetricsLogger: Could not log extra SMA Charger data point "+e);
+        }
+    }
+
     public void logEVCharging(String action, int chargeAmps) {
         if (!dataPath.isPresent()) {
             LOGGER.severe("no data logger defined. not logging.");
@@ -229,9 +264,10 @@ public class MetricsLogger {
         List<Metrics> metricscharger = new LinkedList<>();
         for(String line : charger) {
             String[] parsed = line.split(",");
+            String label = parsed.length > 2 ? parsed[2] : labelIfUnknown;
             ZonedDateTime time = ZonedDateTime.parse(parsed[0], formatter).withZoneSameInstant(ZoneId.of("Europe/Brussels"));
             BigDecimal value = new BigDecimal(parsed[1]).divide(new BigDecimal(1000));
-            Metrics metrics = new Metrics(time, "day", value, BigDecimal.ZERO);
+            Metrics metrics = new Metrics(time, null, value, BigDecimal.ZERO, label);
             metricscharger.add(metrics);
         }
 
@@ -240,7 +276,7 @@ public class MetricsLogger {
             Metrics m2 = metricscharger.get(i + 1);
             ZonedDateTime time = m1.getTimestamp();
             BigDecimal value = m2.getValuet1().subtract(m1.getValuet1());
-            Metrics metrics = new Metrics(m1.getTimestamp(), "day", inPeakHours(time) ? value : BigDecimal.ZERO, inPeakHours(time) ? BigDecimal.ZERO : value);
+            Metrics metrics = new Metrics(m1.getTimestamp(), null, inPeakHours(time) ? value : BigDecimal.ZERO, inPeakHours(time) ? BigDecimal.ZERO : value, m1.getLabel());
             toCharger.add(metrics);
         }
 

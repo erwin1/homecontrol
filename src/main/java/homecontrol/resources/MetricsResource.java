@@ -51,11 +51,13 @@ public class MetricsResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Totals dailyStatus(@QueryParam("date") String date) throws IOException {
         ZonedDateTime z1 = ZonedDateTime.of(LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")), LocalTime.MIDNIGHT, ZoneId.of("Europe/Brussels"));
-        List<CombinedMetrics> details = metricsService.getCombinedMetrics(z1, z1.plusDays(1).minusSeconds(1), "hour");
+        ZonedDateTime z2 = z1.plusDays(1).minusSeconds(1);
+        List<CombinedMetrics> details = metricsService.getCombinedMetrics(z1, z2, "hour");
         CombinedMetrics total = metricsService.calculateTotals(details);
         Totals totals = new Totals();
         totals.setDetails(details);
         totals.setTotals(total);
+        totals.setEvPerLabel(metricsService.getEVTotalsGroupedByLabel(z1, z2));
         return totals;
     }
 
@@ -64,11 +66,13 @@ public class MetricsResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Totals monthlyStatus(@QueryParam("date") String date) throws IOException {
         ZonedDateTime z1 = ZonedDateTime.of(LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd")), LocalTime.MIDNIGHT, ZoneId.of("Europe/Brussels")).withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
-        List<CombinedMetrics> details = metricsService.getCombinedMetrics(z1, z1.plusMonths(1).minusSeconds(1), "day");
+        ZonedDateTime z2 = z1.plusMonths(1).minusSeconds(1);
+        List<CombinedMetrics> details = metricsService.getCombinedMetrics(z1, z2, "day");
         CombinedMetrics total = metricsService.calculateTotals(details);
         Totals totals = new Totals();
         totals.setDetails(details);
         totals.setTotals(total);
+        totals.setEvPerLabel(metricsService.getEVTotalsGroupedByLabel(z1, z2));
         return totals;
     }
 
@@ -83,6 +87,7 @@ public class MetricsResource {
         Totals totals = new Totals();
         totals.setDetails(details);
         totals.setTotals(total);
+        totals.setEvPerLabel(metricsService.getEVTotalsGroupedByLabel(z1, z2));
         return totals;
     }
 
