@@ -27,9 +27,9 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class SMAInverter implements Inverter {
     public static final Logger LOGGER = Logger.getLogger(SMAInverter.class.getName());
-    @ConfigProperty(name = "EVCHARGING_INVERTER_IP")
+    @ConfigProperty(name = "EVCHARGING_INVERTER_IP", defaultValue="NONE")
     String inverterIp;
-    @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD")
+    @ConfigProperty(name = "EVCHARGING_INVERTER_PASSWORD", defaultValue="NONE")
     String inverterPassword;
 
     String sid;
@@ -38,6 +38,7 @@ public class SMAInverter implements Inverter {
     @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
     @Asynchronous
     public Uni<Integer> getCurrentYield() {
+        if (isDisabled()) return Uni.createFrom().item(0);
         return Uni.createFrom().item(getLiveSMAPowerDataInternal());
     }
 
@@ -183,5 +184,9 @@ public class SMAInverter implements Inverter {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    boolean isDisabled() {
+        return "NONE".equals(inverterIp);
     }
 }
