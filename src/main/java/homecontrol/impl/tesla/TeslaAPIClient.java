@@ -48,7 +48,7 @@ public class TeslaAPIClient {
         state.setCharger_actual_current(rsp.getInteger("charger_actual_current"));
         state.setCharging_state(rsp.getString("charging_state"));
         state.setCharge_limit_soc(rsp.getInteger("charge_limit_soc"));
-        state.setBattery_level(rsp.getInteger("battery_level"));
+        state.setBattery_level(rsp.getInteger("usable_battery_level"));
         return state;
     }
 
