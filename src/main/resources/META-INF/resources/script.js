@@ -95,13 +95,8 @@ $(function () {
         data: data,
         options: {
             animation: { animateRotate: false} ,
-            responsive: true,
-            plugins: {
-              title: {
-                display: true,
-                text: 'IN / OUT ratio'
-            }
-        }
+            responsive: true
+            
       },
     };
 
@@ -113,7 +108,7 @@ $(function () {
         min: -4000,
         max: 4000,
         symbol: ' W',
-        label: "Current grid meter",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         differential: true,
@@ -137,7 +132,7 @@ $(function () {
         min: 0,
         max: 7400,
         symbol: ' W',
-        label: "EV Charging",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         pointer: true,
@@ -163,7 +158,7 @@ $(function () {
         min: 0,
         max: 5000,
         symbol: ' W',
-        label: "PV Yield",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         pointer: true,
@@ -189,7 +184,7 @@ $(function () {
         min: 0,
         max: 5000,
         symbol: ' W',
-        label: "Home Usage",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         pointer: true,
@@ -215,7 +210,7 @@ $(function () {
         min: 0,
         max: 6000,
         symbol: ' W',
-        label: "Current 15m average",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         pointer: true,
@@ -242,7 +237,7 @@ $(function () {
         min: 0,
         max: 6000,
         symbol: ' W',
-        label: "Monthly peak",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         pointer: true,
@@ -268,7 +263,7 @@ $(function () {
         min: 0,
         max: 6000,
         symbol: ' W',
-        label: "Estimate 15m peak",
+        label: "",
         decimals: 0,
         gaugeWidthScale: 0.6,
         pointer: true,

@@ -1,0 +1,216 @@
+#livedatatimestamp {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+#livedatatimestamp::before {
+    content: "🕐";
+    font-size: 1.125rem;
+}
+
+.wrapper {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--spacing-lg);
+    max-width: 1400px;
+    margin: 0 auto;
+    padding-bottom: var(--spacing-xl);
+}
+
+.card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-md);
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+    overflow: hidden;
+    position: relative;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--spacing-md) 0;
+    text-align: center;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.card-small {
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-medium {
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-large {
+    grid-column: span 2;
+    min-height: 480px;
+}
+
+.gauge {
+    width: 100%;
+    max-width: 320px;
+    height: 240px;
+    margin: 0 auto;
+}
+
+.gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80%;
+    position: relative;
+}
+
+.ev-status {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 10;
+}
+
+.ev-status .ui-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+}
+
+#evbatterylevel {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+#monthPeakDate {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+#ratioChart {
+    margin-left: 12.5%;
+    width: 75% !important;
+    height: auto !important;    
+    max-width: 100%;
+}
+
+.ratioLegend {
+    margin-left: var(--spacing-sm);
+}
+
+#daytotals {
+    max-width: 1400px;
+    margin: var(--spacing-lg) auto 0;
+    padding: var(--spacing-lg);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .wrapper {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+
+    .card-large {
+        grid-column: span 1;
+    }
+
+    #livedatatimestamp {
+        font-size: 0.875rem;
+    }
+
+    .gauge {
+        max-width: 280px;
+        height: 210px;
+    }
+
+    .card-small,
+    .card-medium {
+        min-height: 250px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .wrapper {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card-large {
+        grid-column: span 2;
+    }
+}
+
+@media (min-width: 1025px) {
+    .wrapper {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .card-large {
+        grid-column: span 3;
+    }
+}
+
+@media (min-width: 1400px) {
+    .wrapper {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .card-large {
+        grid-column: span 4;
+    }
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Smooth transitions for gauge updates */
+.card {
+    animation: fadeIn var(--transition-base);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
