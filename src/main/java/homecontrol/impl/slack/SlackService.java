@@ -18,9 +18,9 @@ import java.util.logging.Logger;
 
 @ApplicationScoped
 public class SlackService implements NotificationService {
-    @ConfigProperty(name = "EVCHARGING_SLACK_URL")
+    @ConfigProperty(name = "EVCHARGING_SLACK_URL", defaultValue="NONE")
     String slackUrl;
-    @ConfigProperty(name = "EVCHARGING_SLACK_CHANNEL")
+    @ConfigProperty(name = "EVCHARGING_SLACK_CHANNEL", defaultValue="NONE")
     String channel;
 
     @Inject

@@ -27,6 +27,13 @@ public class HWEP1Client {
     @ConfigProperty(name = "EVCHARGING_HWEP1_IP")
     String ip;
 
+    @ConfigProperty(name = "HAS_GAS", defaultValue = "true")
+    String hasGas;
+
+    boolean hasGas() {
+        return Boolean.valueOf(hasGas);
+    }
+
     @CacheResult(cacheName = "hwep1-data")
     JsonObject getJsonData() throws IOException {
         LOGGER.fine("Requesting data from HWEP1");
@@ -93,7 +100,7 @@ public class HWEP1Client {
         if (gas != null && gas.size() > 1) {
             telegram.setTotal_gas_m3(new BigDecimal(parseValue(gas.get(1))));
         }
-        telegram.setTotal_gas_m3(new BigDecimal(parseValue(map.get("0-1:24.2.3").get(1))));
+        if (hasGas()) telegram.setTotal_gas_m3(new BigDecimal(parseValue(map.get("0-1:24.2.3").get(1))));
         telegram.setActive_power_average_w(new BigDecimal(parseValue(map.get("1-0:1.4.0").get(0))).multiply(new BigDecimal(1000)).intValue());
         telegram.setActive_power_import_w(new BigDecimal(parseValue(map.get("1-0:1.7.0").get(0))).multiply(new BigDecimal(1000)).intValue());
         telegram.setActive_power_export_w(new BigDecimal(parseValue(map.get("1-0:2.7.0").get(0))).multiply(new BigDecimal(1000)).intValue());
