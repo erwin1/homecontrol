@@ -16,6 +16,7 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.openpdf.text.DocumentException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -110,38 +111,33 @@ public class MetricsService {
         StringBuilder text = new StringBuilder("EV charging report ");
         text.append(lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy"))).append("\n");
         text.append("Charger: ").append(chargerName).append("\n");
+        Mail mail = Mail.withText(
+            reportTo,
+            "EV Charging report "+chargerName+" / "+reportLabel+" "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")),
+            text.toString()
+        );
         for (String label : labels) {
             if (reportLabel.equals(label)) {
-                text.append("Date: ").append(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append("\n");
-                text.append("Vehicle: ").append(label).append("\n");
-                text.append("VIN: ").append(reportVIN).append("\n");
                 EVState odo = volvoEV.doGetOdoMeter();
-                text.append("ODO Meter (km): ").append(odo.getOdo().setScale(0, RoundingMode.HALF_UP)).append(" (").append(odo.getTimestamp().atZone(ZoneId.of("Europe/Brussels")).format((DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")))).append(")\n");
-                text.append("\n");
-                BigDecimal total = BigDecimal.ZERO;
-                metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", label);
-
-                text.append("Date\t\tUsage\n");
-                for (Metrics m : metrics) {
-                    BigDecimal day = m.getValuet1().add(m.getValuet2());
-                    if (day.compareTo(BigDecimal.ZERO) > 0) {
-                        total = total.add(day);
-                        text.append(m.getTimestamp().format((DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
-                        text.append("\t").append(day).append(" kWh\n");
-                    }
+                List<Metrics> dailyMetrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", label);
+                try {
+                    byte[] pdf = EVReportPdfGenerator.generate(
+                        chargerName,
+                        label,
+                        reportVIN,
+                        odo.getOdo(),
+                        odo.getTimestamp().atZone(ZoneId.of("Europe/Brussels")),
+                        lastMonthStart,
+                        dailyMetrics
+                    );
+                    String filename = "EV-report-" + lastMonthStart.format(DateTimeFormatter.ofPattern("yyyy-MM")) + ".pdf";
+                    mail.addAttachment(filename, pdf, "application/pdf");
+                } catch (DocumentException e) {
+                    LOGGER.log(Level.WARNING, "Failed to generate PDF report", e);
                 }
-                text.append("\nTOTAL ").append(":\t\t").append(total).append(" kWh").append("\n");
-                text.append("\nTARIFF ").append(":\t").append("31.32").append(" c€/kWh (CREG)").append("\n");
-                text.append("\nCOST ").append(":\t\t").append(total.multiply(new BigDecimal(31.32)).divide(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP)).append(" EUR").append("\n\n");
             }
         }
-        mailer.send(
-            Mail.withText(
-                reportTo,
-                "EV Charging report "+chargerName+" / "+reportLabel+" "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")),
-                text.toString()
-            )
-        );
+        mailer.send(mail);
     }
 
     public LiveMetrics getLiveMetrics() {
