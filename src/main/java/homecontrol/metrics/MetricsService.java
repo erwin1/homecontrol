@@ -1,5 +1,6 @@
 package homecontrol.metrics;
 
+import homecontrol.impl.volvo.VolvoEV;
 import homecontrol.services.ev.*;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powercontrol.EVControlService;
@@ -14,14 +15,13 @@ import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -58,10 +58,17 @@ public class MetricsService {
     @Inject
     Mailer mailer;
 
+    @Inject
+    VolvoEV volvoEV;
+
     @ConfigProperty(name = "chargerName")
     String chargerName;
     @ConfigProperty(name = "reportTo")
     String reportTo;
+    @ConfigProperty(name = "reportLabel")
+    String reportLabel;
+    @ConfigProperty(name = "EVCHARGING_VOLVO_VEHICLE_VIN")
+    String reportVIN;
 
     @Scheduled(cron="0 0 7 * * ?")
     void sendDailySummary() throws IOException {
@@ -87,8 +94,8 @@ public class MetricsService {
         notificationService.sendNotification("Monthly summary for "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yy"))+"\nin="+totals.getImport()+"\nex="+totals.getExport()+"\nev="+totals.getEV()+"\npv="+totals.getPV()+"\ntotal usage = "+totalUsage+"\nwithout ev = "+totalUsageWithoutEV+"\ngrid in without ev="+(totals.getImport().subtract(totals.getEV())));
     }
 
-    @Scheduled(cron="0 5 12 1 * ?")
-    public void sendEVMonthly() throws IOException {
+    @Scheduled(cron="0 5 7 1 * ?")
+    public void sendEVMonthly() throws IOException, EVException {
         LOGGER.log(Level.INFO, "Creating monthly EV summary");
         ZonedDateTime lastMonthStart = ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0).withDayOfMonth(1).minusMonths(1);
         List<Metrics> metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), null, null);
@@ -99,27 +106,39 @@ public class MetricsService {
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
-        StringBuilder text = new StringBuilder("EV charging usage ");
+        LOGGER.info("report labels = "+labels);
+        StringBuilder text = new StringBuilder("EV charging report ");
         text.append(lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy"))).append("\n");
         text.append("Charger: ").append(chargerName).append("\n");
-        text.append("\n");
         for (String label : labels) {
-            text.append("===============================\n");
-            text.append("Vehicle label: ").append(label).append("\n\n");
-            BigDecimal total = BigDecimal.ZERO;
-            metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", label);
-            for(Metrics m : metrics) {
-                BigDecimal day = m.getValuet1().add(m.getValuet2());
-                total = total.add(day);
-                text.append(m.getTimestamp().format((DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
-                text.append("\t").append(day).append(" kWh\n");
+            if (reportLabel.equals(label)) {
+                text.append("Date: ").append(ZonedDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append("\n");
+                text.append("Vehicle: ").append(label).append("\n");
+                text.append("VIN: ").append(reportVIN).append("\n");
+                EVState odo = volvoEV.doGetOdoMeter();
+                text.append("ODO Meter (km): ").append(odo.getOdo().setScale(0, RoundingMode.HALF_UP)).append(" (").append(odo.getTimestamp().atZone(ZoneId.of("Europe/Brussels")).format((DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")))).append(")\n");
+                text.append("\n");
+                BigDecimal total = BigDecimal.ZERO;
+                metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", label);
+
+                text.append("Date\t\tUsage\n");
+                for (Metrics m : metrics) {
+                    BigDecimal day = m.getValuet1().add(m.getValuet2());
+                    if (day.compareTo(BigDecimal.ZERO) > 0) {
+                        total = total.add(day);
+                        text.append(m.getTimestamp().format((DateTimeFormatter.ofPattern("dd/MM/yyyy"))));
+                        text.append("\t").append(day).append(" kWh\n");
+                    }
+                }
+                text.append("\nTOTAL ").append(":\t\t").append(total).append(" kWh").append("\n");
+                text.append("\nTARIFF ").append(":\t").append("31.32").append(" c€/kWh (CREG)").append("\n");
+                text.append("\nCOST ").append(":\t\t").append(total.multiply(new BigDecimal(31.32)).divide(new BigDecimal(100)).setScale(2, RoundingMode.HALF_UP)).append(" EUR").append("\n\n");
             }
-            text.append("\nTOTAL ").append(label).append(":\t\t").append(total).append(" kWh").append("\n\n");
         }
         mailer.send(
             Mail.withText(
                 reportTo,
-                "EV Charging overview "+chargerName+" "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")),
+                "EV Charging report "+chargerName+" / "+reportLabel+" "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")),
                 text.toString()
             )
         );
