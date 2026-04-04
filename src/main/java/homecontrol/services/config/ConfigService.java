@@ -1,15 +1,23 @@
 package homecontrol.services.config;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Properties;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class ConfigService {
+    private static final Logger LOGGER = Logger.getLogger(ConfigService.class.getName());
+    private final TreeMap<LocalDate, BigDecimal> mutableTariffs = new TreeMap<>();
     @ConfigProperty(name = "max15minpeak")
     int max15minPeak;
 
@@ -49,6 +57,20 @@ public class ConfigService {
 
     @ConfigProperty(name = "minimumChargingA")
     int minimumChargingA;
+
+    @ConfigProperty(name = "tariff")
+    Optional<Map<String, String>> tariffConfig;
+
+    @PostConstruct
+    void initTariffs() {
+        tariffConfig.ifPresent(map -> map.forEach((key, value) -> {
+            try {
+                mutableTariffs.put(LocalDate.parse(key), new BigDecimal(value));
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Skipping invalid tariff entry: " + key + "=" + value, e);
+            }
+        }));
+    }
 
 
     public Mode getCurrentMode() {
@@ -193,6 +215,19 @@ public class ConfigService {
         return evChargingConfig;
     }
 
+    public Optional<BigDecimal> getTariffFor(LocalDate month) {
+        Map.Entry<LocalDate, BigDecimal> entry = mutableTariffs.floorEntry(month);
+        return Optional.ofNullable(entry).map(Map.Entry::getValue);
+    }
+
+    public void setTariff(LocalDate effectiveFrom, BigDecimal value) {
+        mutableTariffs.put(effectiveFrom, value);
+    }
+
+    public List<Map.Entry<LocalDate, BigDecimal>> getTariffEntries() {
+        return new ArrayList<>(mutableTariffs.entrySet());
+    }
+
     public void persist() {
         try {
             Properties properties = new Properties();
@@ -212,6 +247,12 @@ public class ConfigService {
             properties.setProperty("peakstrategy", String.valueOf(peakStrategy));
             properties.setProperty("minimumChargingA", String.valueOf(minimumChargingA));
             properties.setProperty("mode", String.valueOf(currentMode));
+            properties.stringPropertyNames().stream()
+                    .filter(k -> k.startsWith("tariff."))
+                    .collect(Collectors.toList())
+                    .forEach(properties::remove);
+            mutableTariffs.forEach((date, value) ->
+                    properties.setProperty("tariff." + date, value.toPlainString()));
             properties.store(new FileWriter("config/application.properties"), "config changed by app");
         } catch (IOException e) {
             throw new RuntimeException(e);

@@ -1,6 +1,7 @@
 package homecontrol.resources;
 
 import homecontrol.impl.sma.SMACharger;
+import homecontrol.metrics.ReportConfig;
 import homecontrol.services.config.ConfigService;
 import homecontrol.services.config.EVChargingStrategy;
 import homecontrol.services.config.Mode;
@@ -14,7 +15,9 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.math.BigDecimal;
 import java.net.URI;
+import java.time.LocalDate;
 
 @Path("/config")
 public class ConfigResource {
@@ -28,6 +31,9 @@ public class ConfigResource {
 
     @Inject
     PowerPeakService powerPeakService;
+
+    @Inject
+    ReportConfig reportConfig;
 
     @Inject
     Template config;
@@ -51,7 +57,8 @@ public class ConfigResource {
                 .data("o2", configService.getO2())
                 .data("o3", configService.getO3())
                 .data("minimumPVYield", configService.getMinimumPVYield())
-                .data("minimumExport", configService.getMinimumExport());
+                .data("minimumExport", configService.getMinimumExport())
+                .data("tariffEntries", configService.getTariffEntries());
     }
 
     @POST
@@ -87,6 +94,15 @@ public class ConfigResource {
         configService.setO2(o2);
         configService.setO3(o3);
 
+        configService.persist();
+        return Response.seeOther(URI.create("/config")).build();
+    }
+
+    @POST
+    @Path("saveTariff")
+    public Response saveTariff(@FormParam("effectiveFrom") String effectiveFrom,
+                               @FormParam("tariff") String tariff) {
+        configService.setTariff(LocalDate.parse(effectiveFrom), new BigDecimal(tariff));
         configService.persist();
         return Response.seeOther(URI.create("/config")).build();
     }

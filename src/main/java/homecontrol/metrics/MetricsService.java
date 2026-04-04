@@ -1,5 +1,6 @@
 package homecontrol.metrics;
 
+import homecontrol.services.config.ConfigService;
 import homecontrol.services.ev.*;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powercontrol.EVControlService;
@@ -20,9 +21,7 @@ import org.openpdf.text.DocumentException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Duration;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -55,6 +54,9 @@ public class MetricsService {
 
     @Inject
     NotificationService notificationService;
+
+    @Inject
+    ConfigService configService;
 
     @Inject
     Mailer mailer;
@@ -107,7 +109,7 @@ public class MetricsService {
                 continue;
             }
 
-            java.util.Optional<EVState> odo = java.util.Optional.empty();
+            Optional<EVState> odo = Optional.empty();
             for (ElectricVehicle ev : allVehicles) {
                 if (ev.isConfigured() && ev.getName().equals(vehicleConfig.label())) {
                     try {
@@ -119,7 +121,7 @@ public class MetricsService {
                 }
             }
 
-            BigDecimal tariff = vehicleConfig.tariff().orElse(new BigDecimal("31.32"));
+            Optional<BigDecimal> tariff = configService.getTariffFor(lastMonthStart.toLocalDate());
             Mail mail = Mail.withText(
                 vehicleConfig.to(),
                 "EV Charging report " + chargerName + " / " + vehicleConfig.label() + " " + monthLabel,

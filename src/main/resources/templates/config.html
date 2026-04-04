@@ -143,6 +143,31 @@ HOURS
                 </div>
             </div>
         </form>
+
+        <form action="/config/saveTariff" method="post">
+            <div class="config-card">
+                <h2>CREG Tariff (c€/kWh)</h2>
+                {#if tariffEntries.size() > 0}
+                <table style="margin-bottom: var(--spacing-md); border-collapse: collapse;">
+                    <tr><th style="text-align:left; padding: 4px 16px 4px 0;">Effective from</th><th style="text-align:left; padding: 4px 0;">Tariff (c€/kWh)</th></tr>
+                    {#for entry in tariffEntries}
+                    <tr><td style="padding: 2px 16px 2px 0;">{entry.key}</td><td style="padding: 2px 0;">{entry.value}</td></tr>
+                    {/for}
+                </table>
+                {/if}
+                <div class="form-group">
+                    <label for="effectiveFrom">Effective from:</label>
+                    <input type="date" name="effectiveFrom" id="effectiveFrom" required>
+                </div>
+                <div class="form-group">
+                    <label for="tariff">Tariff (c€/kWh):</label>
+                    <input type="number" step="0.01" name="tariff" id="tariff" required>
+                </div>
+                <div class="form-actions">
+                    <input type="submit" value="Save tariff" class="button" />
+                </div>
+            </div>
+        </form>
     </div>
 
 </body>

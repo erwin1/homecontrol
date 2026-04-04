@@ -29,7 +29,7 @@ public class EVReportPdfGenerator {
             Optional<EVState> odo,
             ZonedDateTime month,
             List<Metrics> dailyMetrics,
-            BigDecimal tariff
+            Optional<BigDecimal> tariff
     ) throws DocumentException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
@@ -70,14 +70,18 @@ public class EVReportPdfGenerator {
 
         // Daily usage table
         document.add(new Paragraph("Charging sessions", sectionFont));
-        PdfPTable table = new PdfPTable(4);
+        boolean hasTariff = tariff.isPresent();
+        PdfPTable table = hasTariff ? new PdfPTable(4) : new PdfPTable(2);
         table.setWidthPercentage(80);
         table.setHorizontalAlignment(Element.ALIGN_LEFT);
-        table.setWidths(new float[]{3, 2, 2, 2});
+        table.setWidths(hasTariff ? new float[]{3, 2, 2, 2} : new float[]{3, 2});
         table.setSpacingBefore(6);
         table.setSpacingAfter(20);
 
-        for (String h : new String[]{"Date", "Usage (kWh)", "Tariff (c\u20ac/kWh)", "Cost (EUR)"}) {
+        String[] headers = hasTariff
+                ? new String[]{"Date", "Usage (kWh)", "Tariff (c\u20ac/kWh)", "Cost (EUR)"}
+                : new String[]{"Date", "Usage (kWh)"};
+        for (String h : headers) {
             PdfPCell cell = new PdfPCell(new Phrase(h, labelFont));
             cell.setBackgroundColor(HEADER_BG);
             cell.setPadding(5);
@@ -89,17 +93,24 @@ public class EVReportPdfGenerator {
             BigDecimal usage = m.getValuet1().add(m.getValuet2());
             if (usage.compareTo(BigDecimal.ZERO) > 0) {
                 grandTotal = grandTotal.add(usage);
-                BigDecimal dayCost = usage.multiply(tariff).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
-                addDataRow(table, m.getTimestamp().format(DATE_FMT), fmt(usage), tariff.toPlainString(), dayCost.toPlainString(), normalFont);
+                if (hasTariff) {
+                    BigDecimal dayCost = usage.multiply(tariff.get()).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
+                    addDataRow(table, normalFont, m.getTimestamp().format(DATE_FMT), fmt(usage), tariff.get().toPlainString(), dayCost.toPlainString());
+                } else {
+                    addDataRow(table, normalFont, m.getTimestamp().format(DATE_FMT), fmt(usage));
+                }
             }
         }
 
-        BigDecimal totalCost = grandTotal.multiply(tariff).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
-        addTotalRow(table, "TOTAL", fmt(grandTotal), "", totalCost.toPlainString(), labelFont);
+        if (hasTariff) {
+            BigDecimal totalCost = grandTotal.multiply(tariff.get()).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
+            addTotalRow(table, labelFont, "TOTAL", fmt(grandTotal), "", totalCost.toPlainString());
+        } else {
+            addTotalRow(table, labelFont, "TOTAL", fmt(grandTotal));
+        }
 
         document.add(table);
 
-        BigDecimal cost = grandTotal.multiply(tariff).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
         document.add(new Paragraph("Summary", sectionFont));
         PdfPTable summary = new PdfPTable(2);
         summary.setWidthPercentage(50);
@@ -107,8 +118,11 @@ public class EVReportPdfGenerator {
         summary.setWidths(new float[]{3, 2});
         summary.setSpacingBefore(6);
         addInfoRow(summary, "Total charged", fmt(grandTotal) + " kWh", labelFont, normalFont);
-        addInfoRow(summary, "Tariff (CREG)", tariff.toPlainString() + " c\u20ac/kWh", labelFont, normalFont);
-        addInfoRow(summary, "Total cost", cost.toPlainString() + " EUR", labelFont, normalFont);
+        if (hasTariff) {
+            BigDecimal cost = grandTotal.multiply(tariff.get()).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
+            addInfoRow(summary, "Tariff (CREG)", tariff.get().toPlainString() + " c\u20ac/kWh", labelFont, normalFont);
+            addInfoRow(summary, "Total cost", cost.toPlainString() + " EUR", labelFont, normalFont);
+        }
         document.add(summary);
 
         document.close();
@@ -126,16 +140,21 @@ public class EVReportPdfGenerator {
         table.addCell(valueCell);
     }
 
-    private static void addDataRow(PdfPTable table, String date, String t1, String t2, String total, Font font) {
-        for (String val : new String[]{date, t1, t2, total}) {
-            PdfPCell cell = new PdfPCell(new Phrase(val, font));
+    private static void addDataRow(PdfPTable table, String... values) {
+        addDataRow(table, null, values);
+    }
+
+    private static void addDataRow(PdfPTable table, Font font, String... values) {
+        Font f = font != null ? font : FontFactory.getFont(FontFactory.HELVETICA, 10);
+        for (String val : values) {
+            PdfPCell cell = new PdfPCell(new Phrase(val, f));
             cell.setPadding(4);
             table.addCell(cell);
         }
     }
 
-    private static void addTotalRow(PdfPTable table, String label, String t1, String t2, String total, Font font) {
-        for (String val : new String[]{label, t1, t2, total}) {
+    private static void addTotalRow(PdfPTable table, Font font, String... values) {
+        for (String val : values) {
             PdfPCell cell = new PdfPCell(new Phrase(val, font));
             cell.setBackgroundColor(TOTAL_BG);
             cell.setPadding(5);

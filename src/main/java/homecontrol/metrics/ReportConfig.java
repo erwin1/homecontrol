@@ -2,9 +2,7 @@ package homecontrol.metrics;
 
 import io.smallrye.config.ConfigMapping;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 @ConfigMapping(prefix = "report")
 public interface ReportConfig {
@@ -16,7 +14,5 @@ public interface ReportConfig {
         String label();
         String to();
         String vin();
-        /** Tariff in c€/kWh. Defaults to 31.32 (CREG) if not set. */
-        Optional<BigDecimal> tariff();
     }
 }
