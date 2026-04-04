@@ -12,6 +12,7 @@ import jakarta.inject.Named;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -98,7 +99,10 @@ public class VolvoEV implements ElectricVehicle {
         String chargerConnectionStatus = responseObject.getJsonObject("chargerConnectionStatus").getString("value");
         //chargingStatus IDLE CHARGING SCHEDULED DISCHARGING ERROR DONE
         String chargingStatus = responseObject.getJsonObject("chargingStatus").getString("value");
-        int chargingPower = responseObject.getJsonObject("chargingPower").getNumber("value").intValue();
+        int chargingPower = 0;
+        if (responseObject.getJsonObject("chargingPower").getString("status").equals("OK")) {
+            chargingPower = responseObject.getJsonObject("chargingPower").getNumber("value").intValue();
+        }
         int chargingCurrentLimit = responseObject.getJsonObject("chargingCurrentLimit").getNumber("value").intValue();
         int targetBatteryChargeLevel = responseObject.getJsonObject("targetBatteryChargeLevel").getNumber("value").intValue();
 
@@ -111,6 +115,32 @@ public class VolvoEV implements ElectricVehicle {
         evState.setCharge_current_request_max(chargingCurrentLimit);
         evState.setCharger_power(chargingPower);
         return evState;
+    }
+
+
+    public EVState doGetOdoMeter() throws EVException {
+        String accessToken = volvoTokenService.getAccessToken();
+        HttpRequest request = HttpRequest.newBuilder()
+                .timeout(Duration.ofSeconds(10))
+                .uri(URI.create("https://api.volvocars.com/connected-vehicle/v2/vehicles/"+vehicleVIN.get()+"/odometer"))
+                .header("vcc-api-key", apiKey)
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .GET()
+                .build();
+        JsonObject responseObject = null;
+        try {
+            responseObject = sendRequest(request);
+        } catch (VolvoException e) {
+            throw new EVException(e);
+        }
+        int odo = responseObject.getJsonObject("data").getJsonObject("odometer").getNumber("value").intValue();
+        String timestamp = responseObject.getJsonObject("data").getJsonObject("odometer").getString("timestamp");
+        ZonedDateTime ts = ZonedDateTime.parse(timestamp);
+        EVState s = new EVState();
+        s.setTimestamp(ts.toInstant());
+        s.setOdo(new BigDecimal(odo));
+        return s;
     }
 
     @Override
@@ -137,6 +167,18 @@ public class VolvoEV implements ElectricVehicle {
             throw new RuntimeException(e);
         }
         System.out.println(responseObject);
+
+        try {
+            EVState s = doGetCurrentState();
+            System.out.println(s.getTimestamp());
+            System.out.println(s.getCharge_amps());
+            System.out.println(s.getBattery_level());
+            s = doGetOdoMeter();
+            System.out.println("-------> ODO "+s.getOdo()+" "+s.getTimestamp());
+        } catch (EVException e) {
+            System.out.println(e.getMessage());
+            throw new RuntimeException(e);
+        }
     }
 
     private JsonObject sendRequest(HttpRequest request) throws VolvoException {

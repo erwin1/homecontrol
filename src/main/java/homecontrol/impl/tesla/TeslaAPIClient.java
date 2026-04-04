@@ -4,6 +4,7 @@ import homecontrol.services.ev.EVState;
 import io.vertx.core.json.JsonObject;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -14,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class TeslaAPIClient {
-    public static final Logger LOGGER = Logger.getLogger(TeslaBLEClient.class.getName());
+    public static final Logger LOGGER = Logger.getLogger(TeslaAPIClient.class.getName());
 
     public static final String BASE = "https://owner-api.teslamotors.com";
 
@@ -39,16 +40,18 @@ public class TeslaAPIClient {
                 .GET()
                 .build();
         JsonObject responseObject = sendRequest(request);
-        JsonObject rsp = responseObject.getJsonObject("response").getJsonObject("charge_state");
+        JsonObject chargeStateRsp = responseObject.getJsonObject("response").getJsonObject("charge_state");
+        JsonObject vehicleStateRsp = responseObject.getJsonObject("response").getJsonObject("vehicle_state");
         EVState state = new EVState();
         state.setTimestamp(Instant.now());
-        state.setCharge_amps(rsp.getInteger("charge_amps"));
-        state.setCharge_current_request(rsp.getInteger("charge_current_request"));
-        state.setCharge_current_request_max(rsp.getInteger("charge_current_request_max"));
-        state.setCharger_actual_current(rsp.getInteger("charger_actual_current"));
-        state.setCharging_state(rsp.getString("charging_state"));
-        state.setCharge_limit_soc(rsp.getInteger("charge_limit_soc"));
-        state.setBattery_level(rsp.getInteger("usable_battery_level"));
+        state.setCharge_amps(chargeStateRsp.getInteger("charge_amps"));
+        state.setCharge_current_request(chargeStateRsp.getInteger("charge_current_request"));
+        state.setCharge_current_request_max(chargeStateRsp.getInteger("charge_current_request_max"));
+        state.setCharger_actual_current(chargeStateRsp.getInteger("charger_actual_current"));
+        state.setCharging_state(chargeStateRsp.getString("charging_state"));
+        state.setCharge_limit_soc(chargeStateRsp.getInteger("charge_limit_soc"));
+        state.setBattery_level(chargeStateRsp.getInteger("usable_battery_level"));
+        state.setOdo(new BigDecimal(vehicleStateRsp.getDouble("odometer")).setScale(2, BigDecimal.ROUND_HALF_UP));
         return state;
     }
 

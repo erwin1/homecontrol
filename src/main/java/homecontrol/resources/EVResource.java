@@ -1,6 +1,7 @@
 package homecontrol.resources;
 
 
+import homecontrol.metrics.MetricsService;
 import homecontrol.services.ev.EVException;
 import homecontrol.services.ev.ElectricVehicle;
 import jakarta.inject.Inject;
@@ -10,6 +11,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import java.io.IOException;
 import java.util.logging.Logger;
 
 @Path("/ev")
@@ -23,6 +25,9 @@ public class EVResource {
     @Inject
     @Named("tesla")
     ElectricVehicle tesla;
+
+    @Inject
+    MetricsService metricsService;
 
     @GET
     @Path("chargeport/open")
@@ -40,8 +45,16 @@ public class EVResource {
     @GET
     @Path("debug/volvo")
     @Produces(MediaType.TEXT_PLAIN)
-    public String debugvolvo() throws EVException {
+    public String debugvolvo() throws EVException, IOException {
         volvo.debug();
+        return "ok";
+    }
+
+    @GET
+    @Path("debug/sendreport")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String volvoreport() throws EVException, IOException {
+        metricsService.sendEVMonthly();
         return "ok";
     }
 

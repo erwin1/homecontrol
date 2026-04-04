@@ -18,6 +18,7 @@ public class EVState {
     private int charger_actual_current;
     private int charger_power;
     private String charging_state;
+    private BigDecimal odo;
 
     public Instant getTimestamp() {
         return timestamp;
@@ -129,5 +130,13 @@ public class EVState {
 
     public void setCharging_state(String charging_state) {
         this.charging_state = charging_state;
+    }
+
+    public BigDecimal getOdo() {
+        return odo;
+    }
+
+    public void setOdo(BigDecimal odo) {
+        this.odo = odo;
     }
 }
