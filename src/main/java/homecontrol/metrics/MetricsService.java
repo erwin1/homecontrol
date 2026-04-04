@@ -128,12 +128,12 @@ public class MetricsService {
     public LiveMetrics getLiveMetrics() {
         var tuple = Uni.combine().all().unis(
                 inverter.getCurrentYield(),
-                powerMeter.getActivePower(),
+                powerMeter.getPower(),
                 charger.getActivePower()
         ).asTuple().await().atMost(Duration.ofSeconds(10));
-        MonthlyPowerPeak monthlyPowerPeak = powerMeter.getMonthlyPowerPeak();
+        MonthlyPowerPeak monthlyPowerPeak = tuple.getItem2().getMonthlyPowerPeak();
         int currentYield = tuple.getItem1();
-        ActivePower activePower = tuple.getItem2();
+        ActivePower activePower = tuple.getItem2().getActivePower();
         int chargerW = tuple.getItem3();
 
 
