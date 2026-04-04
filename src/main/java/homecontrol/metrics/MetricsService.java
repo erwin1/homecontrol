@@ -21,6 +21,7 @@ import org.openpdf.text.DocumentException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -72,27 +73,52 @@ public class MetricsService {
     String chargerName;
 
     @Scheduled(cron="0 0 7 * * ?")
-    void sendDailySummary() throws IOException {
+    public void sendDailySummary() throws IOException {
         LOGGER.log(Level.INFO, "Creating daily summary");
         ZonedDateTime yesterdayStart = ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0).minusDays(1);
-        List<CombinedMetrics> metrics = getCombinedMetrics(yesterdayStart, yesterdayStart.plusDays(1).minusSeconds(1), "day");
+        sendSummary("*Daily summary "+yesterdayStart.format(DateTimeFormatter.ofPattern("dd MMM yyyy")) + "*", yesterdayStart, yesterdayStart.plusDays(1).minusSeconds(1));
+    }
+
+    private void sendSummary(String label, ZonedDateTime start, ZonedDateTime end) throws IOException {
+        List<CombinedMetrics> metrics = getCombinedMetrics(start, end, "day");
         CombinedMetrics totals = calculateTotals(metrics);
         metrics.stream().forEach(m -> System.out.println(m.getTimestamp()+" in="+m.getImport()+" ex="+m.getExport()+" ev="+m.getEV()+" pv="+m.getPV()));
         BigDecimal totalUsage = totals.getImport().add(totals.getPV()).subtract(totals.getExport());
         BigDecimal totalUsageWithoutEV = totalUsage.subtract(totals.getEV());
-        notificationService.sendNotification("Daily summary for "+yesterdayStart.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))+"\nin="+totals.getImport()+"\nex="+totals.getExport()+"\nev="+totals.getEV()+"\npv="+totals.getPV()+"\ntotal usage = "+totalUsage+"\nwithout ev = "+totalUsageWithoutEV+"\ngrid in without ev="+(totals.getImport().subtract(totals.getEV())));
+        BigDecimal home = totals.getImport().subtract(totals.getEV());
+        StringBuilder msg = new StringBuilder();
+        msg.append(label).append("\n");
+        msg.append("☀️ ").append(r1(totals.getPV())).append(" kWh   ⬇️ ").append(r1(totals.getImport())).append(" kWh   ⬆️ ").append(r1(totals.getExport())).append(" kWh\n");
+        msg.append("📊 ").append(r1(totalUsage)).append(" kWh   🏠 ").append(r1(totalUsageWithoutEV)).append(" kWh home ⬇️ ").append(r1(home)).append(" kWh grid");
+
+        Map<String,BigDecimal> evDetails = getEVTotalsGroupedByLabel(start, end);
+        if (!evDetails.isEmpty()) {
+            msg.append("\n🚗 ").append(r1(totals.getEV())).append(" kWh EV");
+            BigDecimal totalin = totals.getImport();
+            for (String vehicle : evDetails.keySet()) {
+                BigDecimal usage = evDetails.get(vehicle);
+                if (usage.compareTo(new BigDecimal("0.5")) > 0) {
+                    BigDecimal gridForVehicle;
+                    if (totalin.compareTo(usage) > 0) {
+                        gridForVehicle = usage;
+                        totalin = totalin.subtract(usage);
+                    } else {
+                        gridForVehicle = totalin;
+                        totalin = BigDecimal.ZERO;
+                    }
+                    msg.append("\n  └ ").append(vehicle).append(": ").append(r1(usage)).append(" kWh ⬇️ ").append(r1(gridForVehicle)).append(" kWh grid");
+                }
+            }
+        }
+
+        notificationService.sendNotification(msg.toString());
     }
 
     @Scheduled(cron="0 5 7 1 * ?")
-    void sendMonthlySummary() throws IOException {
+    public void sendMonthlySummary() throws IOException {
         LOGGER.log(Level.INFO, "Creating monthly summary");
         ZonedDateTime lastMonthStart = ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0).withDayOfMonth(1).minusMonths(1);
-        List<CombinedMetrics> metrics = getCombinedMetrics(lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "month");
-        CombinedMetrics totals = calculateTotals(metrics);
-        metrics.stream().forEach(m -> System.out.println(m.getTimestamp()+" in="+m.getImport()+" ex="+m.getExport()+" ev="+m.getEV()+" pv="+m.getPV()));
-        BigDecimal totalUsage = totals.getImport().add(totals.getPV()).subtract(totals.getExport());
-        BigDecimal totalUsageWithoutEV = totalUsage.subtract(totals.getEV());
-        notificationService.sendNotification("Monthly summary for "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yy"))+"\nin="+totals.getImport()+"\nex="+totals.getExport()+"\nev="+totals.getEV()+"\npv="+totals.getPV()+"\ntotal usage = "+totalUsage+"\nwithout ev = "+totalUsageWithoutEV+"\ngrid in without ev="+(totals.getImport().subtract(totals.getEV())));
+        sendSummary("*Monthly summary for "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yy"))+"*", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1));
     }
 
     @Scheduled(cron="0 5 7 1 * ?")
@@ -365,6 +391,10 @@ public class MetricsService {
         totals.setPvt1(new BigDecimal(sumpvt1).divide(new BigDecimal(1000)));
         totals.setPvt2(new BigDecimal(sumpvt2).divide(new BigDecimal(1000)));
         return totals;
+    }
+
+    private static BigDecimal r1(BigDecimal v) {
+        return v.setScale(1, RoundingMode.HALF_UP);
     }
 
     private boolean gte(ZonedDateTime t1, ZonedDateTime t2) {

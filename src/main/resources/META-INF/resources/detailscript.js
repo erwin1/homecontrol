@@ -76,16 +76,36 @@ function updateCharts( data, labelFormatter ) {
     totalRatioChart.update();
 
     var ev = "";
-    for (const label in data.evPerLabel) {
-      ev += label+": "+data.evPerLabel[label]+" kWh <br>";
-    }
 
     $("#totalpv").html(data.totals.pv+" kWh");
     $("#totalgridin").html(data.totals.import+" kWh");
     $("#totalgridout").html(data.totals.export+" kWh");
     $("#totalev").html(data.totals.ev+" kWh");
+    var intotal = data.totals.import;
+    var inhome = Math.round((intotal - data.totals.ev) * 100) / 100;
+
+    ev += '<div class="legendrow"><div class="legend gridin"></div><span class="legendlabel">Grid IN (home) '+inhome+' kWh</span></div>';
+    for (const label in data.evPerLabel) {
+      var totalVehicle = data.evPerLabel[label];
+      if (intotal > totalVehicle) {
+          if (totalVehicle > 0.5) {
+             ev += '<div class="legendrow"><div class="legend gridin"></div><span class="legendlabel">Grid IN '+label+' '+(Math.round((totalVehicle) * 100) / 100)+' kWh</span></div>';
+          }
+          intotal -= totalVehicle;
+      } else {
+         if (intotal > 0.5) {
+            ev += '<div class="legendrow"><div class="legend gridin"></div><span class="legendlabel">Grid IN '+label+' '+(Math.round((intotal) * 100) / 100)+' kWh</span></div>';
+         }
+         intotal = 0;
+      }
+    }
+    for (const label in data.evPerLabel) {
+          var totalVehicle = data.evPerLabel[label];
+          if (totalVehicle > 0.5) {
+            ev += '<div class="legendrow"><div class="legend ev"></div><span class="legendlabel">Total '+label+' '+(Math.round((totalVehicle) * 100) / 100)+' kWh</span></div>';
+          }
+        }
     $("#evdetail").html(ev);
-    $("#totalgridinnoev").html(Math.round((data.totals.import - data.totals.ev) * 100) / 100+" kWh");
     $("#totalhome").html(data.totals.totalUsageWithoutEV+" kWh");
 
     var dataHome = new Array();
