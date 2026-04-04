@@ -39,6 +39,7 @@ public class HttpHelper {
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(10_000);
         conn.setHostnameVerifier(allHostsValid);
+        conn.setRequestProperty("Connection", "close");
         conn.setSSLSocketFactory(sc.getSocketFactory());
         return conn;
     }

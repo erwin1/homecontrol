@@ -104,35 +104,39 @@ public class SMACharger implements Charger {
                 token = authenticate();
             }
             HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/parameters/IGULD:SELF");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer "+token);
-            conn.setRequestMethod("PUT");
-            conn.setRequestProperty("Sec-Fetch-Dest", "empty");
-            conn.setRequestProperty("Sec-Fetch-Mode", "cors");
-            conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
-            conn.setRequestProperty("User-Agent", "homecontrol");
+            try {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + token);
+                conn.setRequestMethod("PUT");
+                conn.setRequestProperty("Sec-Fetch-Dest", "empty");
+                conn.setRequestProperty("Sec-Fetch-Mode", "cors");
+                conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
+                conn.setRequestProperty("User-Agent", "homecontrol");
 
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            writer.write(body);
-            writer.flush();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                writer.write(body);
+                writer.flush();
 
 
-            if (conn.getResponseCode() == 401) {
-                token = null;
-                throw new RuntimeException("auth error");
-            }
-            if (conn.getResponseCode() == 204) {
-                return;//OK
-            }
+                if (conn.getResponseCode() == 401) {
+                    token = null;
+                    throw new RuntimeException("auth error");
+                }
+                if (conn.getResponseCode() == 204) {
+                    return;//OK
+                }
 
-            body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
-            JsonObject object = new JsonObject(body);
+                body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
+                JsonObject object = new JsonObject(body);
 
-            if (object.getString("err") != null) {
-                throw new RuntimeException("error from charger "+object.getString("err"));
+                if (object.getString("err") != null) {
+                    throw new RuntimeException("error from charger " + object.getString("err"));
+                }
+            } finally {
+                conn.disconnect();
             }
 
         } catch (RuntimeException e) {
@@ -148,23 +152,27 @@ public class SMACharger implements Charger {
                 token = authenticate();
             }
             HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/widgets/emobility?componentId=Plant:1");
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer "+token);
+            try {
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + token);
 
-            if (conn.getResponseCode() == 401) {
-                token = null;
-                throw new RuntimeException("auth error");
+                if (conn.getResponseCode() == 401) {
+                    token = null;
+                    throw new RuntimeException("auth error");
+                }
+                String body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
+                JsonObject object = new JsonObject(body);
+
+                if (object.getString("err") != null) {
+                    throw new RuntimeException("error from charger " + object.getString("err"));
+                }
+
+                State status = State.valueOf(object.getString("chargeStatus"));
+                return status;
+            } finally {
+                conn.disconnect();
             }
-            String body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
-            JsonObject object = new JsonObject(body);
-
-            if (object.getString("err") != null) {
-                throw new RuntimeException("error from charger "+object.getString("err"));
-            }
-
-            State status = State.valueOf(object.getString("chargeStatus"));
-            return status;
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -186,27 +194,31 @@ public class SMACharger implements Charger {
                 token = authenticate();
             }
             HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/measurements/live/");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer "+token);
+            try {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + token);
 
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            writer.write("[{\"componentId\":\"Plant:1\"}]");
-            writer.flush();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                writer.write("[{\"componentId\":\"Plant:1\"}]");
+                writer.flush();
 
-            if (conn.getResponseCode() == 401) {
-                token = null;
-                throw new RuntimeException("auth error");
-            }
-            String body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
-            JsonArray array = new JsonArray(body);
-            for(int i = 0; i < array.size(); i++) {
-                JsonObject obj = array.getJsonObject(i);
-                if (obj.getString("channelId").equals(key)) {
-                    return obj.getJsonArray("values").getJsonObject(0).getLong("value");
+                if (conn.getResponseCode() == 401) {
+                    token = null;
+                    throw new RuntimeException("auth error");
                 }
+                String body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
+                JsonArray array = new JsonArray(body);
+                for (int i = 0; i < array.size(); i++) {
+                    JsonObject obj = array.getJsonObject(i);
+                    if (obj.getString("channelId").equals(key)) {
+                        return obj.getJsonArray("values").getJsonObject(0).getLong("value");
+                    }
+                }
+            } finally {
+                conn.disconnect();
             }
         } catch (RuntimeException e) {
             throw e;
@@ -218,20 +230,24 @@ public class SMACharger implements Charger {
 
     private String authenticate() {
         try {
-            URLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/token");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
-            conn.setRequestProperty("Accept", "application/json");
+            HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/token");
+            try {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
+                conn.setRequestProperty("Accept", "application/json");
 
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            writer.write("grant_type=password&username="+chargerUserName+"&password="+chargerPassword);
-            writer.flush();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                writer.write("grant_type=password&username=" + chargerUserName + "&password=" + chargerPassword);
+                writer.flush();
 
-            String body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
+                String body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
 
-            JsonObject obj = new JsonObject(body);
-            return obj.getString("access_token");
+                JsonObject obj = new JsonObject(body);
+                return obj.getString("access_token");
+            } finally {
+                conn.disconnect();
+            }
 
         } catch (Exception e) {
             throw new RuntimeException(e);

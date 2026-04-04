@@ -11,6 +11,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Asynchronous;
 import org.eclipse.microprofile.faulttolerance.Retry;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
@@ -58,33 +59,36 @@ public class SMAInverter implements Inverter {
             if (sid == null) {
                 sid = authenticate();
             }
-            URLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/getAllOnlValues.json?sid="+sid);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Accept", "application/json");
+            HttpsURLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/getAllOnlValues.json?sid="+sid);
+            try {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Accept", "application/json");
 
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            writer.write("{\"destDev\":[]}");
-            writer.flush();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                writer.write("{\"destDev\":[]}");
+                writer.flush();
 
-            String body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
+                String body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
 
-            JsonObject object = new JsonObject(body);
+                JsonObject object = new JsonObject(body);
 
-            if (object.getString("err") != null) {
-                sid = null;
-                throw new RuntimeException("auth err "+object.getString("err"));
+                if (object.getString("err") != null) {
+                    sid = null;
+                    throw new RuntimeException("auth err " + object.getString("err"));
+                }
+
+                long reading = object.getJsonObject("result")
+                        .getJsonObject("0199-xxxxx04E")
+                        .getJsonObject("6400_00260100")
+                        .getJsonArray("1")
+                        .getJsonObject(0)
+                        .getLong("val", 0L);
+                return reading;
+            } finally {
+                conn.disconnect();
             }
-
-            long reading = object.getJsonObject("result")
-                    .getJsonObject("0199-xxxxx04E")
-                    .getJsonObject("6400_00260100")
-                    .getJsonArray("1")
-                    .getJsonObject(0)
-                    .getLong("val", 0L);
-            return reading;
-
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -97,37 +101,41 @@ public class SMAInverter implements Inverter {
             if (sid == null) {
                 sid = authenticate();
             }
-            URLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/getAllOnlValues.json?sid="+sid);
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Accept", "application/json");
+            HttpsURLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/getAllOnlValues.json?sid="+sid);
+            try {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Accept", "application/json");
 
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            writer.write("{\"destDev\":[]}");
-            writer.flush();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                writer.write("{\"destDev\":[]}");
+                writer.flush();
 
-            String body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
+                String body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
 
-            JsonObject object = new JsonObject(body);
+                JsonObject object = new JsonObject(body);
 
-            if (object.getString("err") != null) {
-                sid = null;
-                throw new RuntimeException("auth err "+object.getString("err"));
+                if (object.getString("err") != null) {
+                    sid = null;
+                    throw new RuntimeException("auth err " + object.getString("err"));
+                }
+
+                String x = object.getJsonObject("result")
+                        .getJsonObject("0199-xxxxx04E")
+                        .getJsonObject("6100_40263F00")
+                        .getJsonArray("1")
+                        .getJsonObject(0)
+                        .getString("val");
+                int fromPV = 0;
+                if (x != null) {
+                    fromPV = Integer.parseInt(x);
+                }
+
+                return fromPV;
+            } finally {
+                conn.disconnect();
             }
-
-            String x = object.getJsonObject("result")
-                    .getJsonObject("0199-xxxxx04E")
-                    .getJsonObject("6100_40263F00")
-                    .getJsonArray("1")
-                    .getJsonObject(0)
-                    .getString("val");
-            int fromPV = 0;
-            if (x != null) {
-                fromPV = Integer.parseInt(x);
-            }
-
-            return fromPV;
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -137,26 +145,29 @@ public class SMAInverter implements Inverter {
 
     private String authenticate() {
         try {
-            URLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/login.json");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Accept", "application/json");
+            HttpsURLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/login.json");
+            try {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Accept", "application/json");
 
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            writer.write("{\"right\":\"usr\",\"pass\":\""+ inverterPassword +"\"}");
-            writer.close();
-            String body = new String(conn.getInputStream().readAllBytes());
-            conn.getInputStream().close();
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                writer.write("{\"right\":\"usr\",\"pass\":\"" + inverterPassword + "\"}");
+                writer.close();
+                String body = new String(conn.getInputStream().readAllBytes());
+                conn.getInputStream().close();
 
-            JsonObject object = new JsonObject(body);
-            if (object.getInteger("err") != null) {
-                sid = null;
-                throw new RuntimeException("auth err "+object.getInteger("err"));
+                JsonObject object = new JsonObject(body);
+                if (object.getInteger("err") != null) {
+                    sid = null;
+                    throw new RuntimeException("auth err " + object.getInteger("err"));
+                }
+                String sid = object.getJsonObject("result").getString("sid");
+                LOGGER.info("successfully retrieved SMA sid");
+                return sid;
+            } finally {
+                conn.disconnect();
             }
-            String sid = object.getJsonObject("result").getString("sid");
-            LOGGER.info("successfully retrieved SMA sid");
-            return sid;
-
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -165,20 +176,24 @@ public class SMAInverter implements Inverter {
     private void logout() {
         if (sid != null) {
             try {
-                URLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/logout.json?sid=" + sid);
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setDoOutput(true);
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("Accept", "application/json");
+                HttpsURLConnection conn = HttpHelper.openConnection("https://"+ inverterIp +"/dyn/logout.json?sid=" + sid);
+                try {
+                    conn.setRequestProperty("Accept", "application/json");
+                    conn.setDoOutput(true);
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setRequestProperty("Accept", "application/json");
 
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-                writer.write("{}");
-                writer.flush();
+                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+                    writer.write("{}");
+                    writer.flush();
 
-                BufferedInputStream reader = new BufferedInputStream(conn.getInputStream());
-                LOGGER.info("logout response = "+new String(reader.readAllBytes()));
+                    BufferedInputStream reader = new BufferedInputStream(conn.getInputStream());
+                    LOGGER.info("logout response = " + new String(reader.readAllBytes()));
 
-                sid = null;
+                    sid = null;
+                } finally {
+                    conn.disconnect();
+                }
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
