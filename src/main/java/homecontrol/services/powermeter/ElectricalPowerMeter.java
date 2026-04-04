@@ -8,6 +8,8 @@ public interface ElectricalPowerMeter {
 
     Uni<ActivePower> getActivePower();
 
+    Uni<Power> getPower();
+
     MonthlyPowerPeak getMonthlyPowerPeak();
 
 }
