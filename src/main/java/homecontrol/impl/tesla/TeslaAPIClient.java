@@ -51,7 +51,7 @@ public class TeslaAPIClient {
         state.setCharging_state(chargeStateRsp.getString("charging_state"));
         state.setCharge_limit_soc(chargeStateRsp.getInteger("charge_limit_soc"));
         state.setBattery_level(chargeStateRsp.getInteger("usable_battery_level"));
-        state.setOdo(new BigDecimal(vehicleStateRsp.getDouble("odometer")).setScale(2, BigDecimal.ROUND_HALF_UP));
+        state.setOdo(new BigDecimal(vehicleStateRsp.getDouble("odometer")).multiply(new BigDecimal("1.609344")).setScale(2, BigDecimal.ROUND_HALF_UP));//convert ODO in miles to km
         return state;
     }
 

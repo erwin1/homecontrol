@@ -118,6 +118,11 @@ public class VolvoEV implements ElectricVehicle {
     }
 
 
+    @Override
+    public Optional<EVState> getOdoMeter() throws EVException {
+        return Optional.of(doGetOdoMeter());
+    }
+
     public EVState doGetOdoMeter() throws EVException {
         String accessToken = volvoTokenService.getAccessToken();
         HttpRequest request = HttpRequest.newBuilder()

@@ -1,5 +1,6 @@
 package homecontrol.metrics;
 
+import homecontrol.services.ev.EVState;
 import org.openpdf.text.*;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
@@ -9,14 +10,15 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 public class EVReportPdfGenerator {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final BigDecimal TARIFF = new BigDecimal("31.32");
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final Color HEADER_BG = new Color(220, 220, 220);
     private static final Color TOTAL_BG = new Color(240, 240, 240);
 
@@ -24,10 +26,10 @@ public class EVReportPdfGenerator {
             String chargerName,
             String vehicleLabel,
             String vin,
-            BigDecimal odo,
-            ZonedDateTime odoTimestamp,
+            Optional<EVState> odo,
             ZonedDateTime month,
-            List<Metrics> dailyMetrics
+            List<Metrics> dailyMetrics,
+            BigDecimal tariff
     ) throws DocumentException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
@@ -57,9 +59,12 @@ public class EVReportPdfGenerator {
         addInfoRow(info, "Charger", chargerName, labelFont, normalFont);
         addInfoRow(info, "Vehicle", vehicleLabel, labelFont, normalFont);
         addInfoRow(info, "VIN", vin, labelFont, normalFont);
-        addInfoRow(info, "ODO meter",
-                odo.setScale(0, RoundingMode.HALF_UP) + " km  (" + odoTimestamp.format(DATE_FMT) + ")",
-                labelFont, normalFont);
+        if (odo.isPresent()) {
+            ZonedDateTime odoTs = odo.get().getTimestamp().atZone(ZoneId.of("Europe/Brussels"));
+            addInfoRow(info, "ODO meter",
+                    odo.get().getOdo().setScale(0, RoundingMode.HALF_UP) + " km  (" + odoTs.format(DATE_FMT) + ")",
+                    labelFont, normalFont);
+        }
         addInfoRow(info, "Report date", ZonedDateTime.now().format(DATE_FMT), labelFont, normalFont);
         document.add(info);
 
@@ -84,17 +89,17 @@ public class EVReportPdfGenerator {
             BigDecimal usage = m.getValuet1().add(m.getValuet2());
             if (usage.compareTo(BigDecimal.ZERO) > 0) {
                 grandTotal = grandTotal.add(usage);
-                BigDecimal dayCost = usage.multiply(TARIFF).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
-                addDataRow(table, m.getTimestamp().format(DATE_FMT), fmt(usage), "31.32", dayCost.toPlainString(), normalFont);
+                BigDecimal dayCost = usage.multiply(tariff).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
+                addDataRow(table, m.getTimestamp().format(DATE_FMT), fmt(usage), tariff.toPlainString(), dayCost.toPlainString(), normalFont);
             }
         }
 
-        BigDecimal totalCost = grandTotal.multiply(TARIFF).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
+        BigDecimal totalCost = grandTotal.multiply(tariff).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
         addTotalRow(table, "TOTAL", fmt(grandTotal), "", totalCost.toPlainString(), labelFont);
 
         document.add(table);
 
-        BigDecimal cost = grandTotal.multiply(TARIFF).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
+        BigDecimal cost = grandTotal.multiply(tariff).divide(new BigDecimal(100), 2, RoundingMode.HALF_UP);
         document.add(new Paragraph("Summary", sectionFont));
         PdfPTable summary = new PdfPTable(2);
         summary.setWidthPercentage(50);
@@ -102,7 +107,7 @@ public class EVReportPdfGenerator {
         summary.setWidths(new float[]{3, 2});
         summary.setSpacingBefore(6);
         addInfoRow(summary, "Total charged", fmt(grandTotal) + " kWh", labelFont, normalFont);
-        addInfoRow(summary, "Tariff (CREG)", "31.32 c\u20ac/kWh", labelFont, normalFont);
+        addInfoRow(summary, "Tariff (CREG)", tariff.toPlainString() + " c\u20ac/kWh", labelFont, normalFont);
         addInfoRow(summary, "Total cost", cost.toPlainString() + " EUR", labelFont, normalFont);
         document.add(summary);
 

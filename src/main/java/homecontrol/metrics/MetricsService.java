@@ -1,6 +1,5 @@
 package homecontrol.metrics;
 
-import homecontrol.impl.volvo.VolvoEV;
 import homecontrol.services.ev.*;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powercontrol.EVControlService;
@@ -15,7 +14,8 @@ import io.quarkus.scheduler.Scheduled;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.Instance;
 import org.openpdf.text.DocumentException;
 
 import java.io.IOException;
@@ -60,16 +60,14 @@ public class MetricsService {
     Mailer mailer;
 
     @Inject
-    VolvoEV volvoEV;
+    @Any
+    Instance<ElectricVehicle> allVehicles;
 
-    @ConfigProperty(name = "chargerName")
+    @Inject
+    ReportConfig reportConfig;
+
+    @org.eclipse.microprofile.config.inject.ConfigProperty(name = "chargerName")
     String chargerName;
-    @ConfigProperty(name = "reportTo")
-    String reportTo;
-    @ConfigProperty(name = "reportLabel")
-    String reportLabel;
-    @ConfigProperty(name = "EVCHARGING_VOLVO_VEHICLE_VIN")
-    String reportVIN;
 
     @Scheduled(cron="0 0 7 * * ?")
     void sendDailySummary() throws IOException {
@@ -96,48 +94,53 @@ public class MetricsService {
     }
 
     @Scheduled(cron="0 5 7 1 * ?")
-    public void sendEVMonthly() throws IOException, EVException {
+    public void sendEVMonthly() throws IOException {
         LOGGER.log(Level.INFO, "Creating monthly EV summary");
         ZonedDateTime lastMonthStart = ZonedDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0).withDayOfMonth(1).minusMonths(1);
-        List<Metrics> metrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), null, null);
-        List<String> labels = metrics.stream()
-                .filter(m -> m.getValuet1().compareTo(BigDecimal.ZERO) > 0 || m.getValuet2().compareTo(BigDecimal.ZERO) > 0)
-                .filter(m -> m.getLabel() != null)
-                .map(m -> m.getLabel())
-                .distinct()
-                .sorted()
-                .collect(Collectors.toList());
-        LOGGER.info("report labels = "+labels);
-        StringBuilder text = new StringBuilder("EV charging report ");
-        text.append(lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy"))).append("\n");
-        text.append("Charger: ").append(chargerName).append("\n");
-        Mail mail = Mail.withText(
-            reportTo,
-            "EV Charging report "+chargerName+" / "+reportLabel+" "+lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy")),
-            text.toString()
-        );
-        for (String label : labels) {
-            if (reportLabel.equals(label)) {
-                EVState odo = volvoEV.doGetOdoMeter();
-                List<Metrics> dailyMetrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", label);
-                try {
-                    byte[] pdf = EVReportPdfGenerator.generate(
-                        chargerName,
-                        label,
-                        reportVIN,
-                        odo.getOdo(),
-                        odo.getTimestamp().atZone(ZoneId.of("Europe/Brussels")),
-                        lastMonthStart,
-                        dailyMetrics
-                    );
-                    String filename = "EV-report-" + lastMonthStart.format(DateTimeFormatter.ofPattern("yyyy-MM")) + ".pdf";
-                    mail.addAttachment(filename, pdf, "application/pdf");
-                } catch (DocumentException e) {
-                    LOGGER.log(Level.WARNING, "Failed to generate PDF report", e);
+        String monthLabel = lastMonthStart.format(DateTimeFormatter.ofPattern("MMM yyyy"));
+
+        for (ReportConfig.VehicleReportConfig vehicleConfig : reportConfig.vehicles()) {
+            List<Metrics> dailyMetrics = getMetrics("charger", lastMonthStart, lastMonthStart.plusMonths(1).minusSeconds(1), "day", vehicleConfig.label());
+            boolean hasData = dailyMetrics.stream().anyMatch(m -> m.getValuet1().add(m.getValuet2()).compareTo(BigDecimal.ZERO) > 0);
+            if (!hasData) {
+                LOGGER.info("No charging data for " + vehicleConfig.label() + " in " + monthLabel + ", skipping report");
+                continue;
+            }
+
+            java.util.Optional<EVState> odo = java.util.Optional.empty();
+            for (ElectricVehicle ev : allVehicles) {
+                if (ev.isConfigured() && ev.getName().equals(vehicleConfig.label())) {
+                    try {
+                        odo = ev.getOdoMeter();
+                    } catch (EVException e) {
+                        LOGGER.log(Level.WARNING, "Failed to get ODO for " + vehicleConfig.label(), e);
+                    }
+                    break;
                 }
             }
+
+            BigDecimal tariff = vehicleConfig.tariff().orElse(new BigDecimal("31.32"));
+            Mail mail = Mail.withText(
+                vehicleConfig.to(),
+                "EV Charging report " + chargerName + " / " + vehicleConfig.label() + " " + monthLabel,
+                "Please find attached the EV charging report for " + vehicleConfig.label() + " – " + monthLabel + "."
+            );
+            try {
+                byte[] pdf = EVReportPdfGenerator.generate(
+                    chargerName,
+                    vehicleConfig.label(),
+                    vehicleConfig.vin(),
+                    odo,
+                    lastMonthStart,
+                    dailyMetrics,
+                    tariff
+                );
+                mail.addAttachment("EV-report-" + lastMonthStart.format(DateTimeFormatter.ofPattern("yyyy-MM")) + ".pdf", pdf, "application/pdf");
+            } catch (DocumentException e) {
+                LOGGER.log(Level.WARNING, "Failed to generate PDF report for " + vehicleConfig.label(), e);
+            }
+            mailer.send(mail);
         }
-        mailer.send(mail);
     }
 
     public LiveMetrics getLiveMetrics() {

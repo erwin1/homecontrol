@@ -72,6 +72,12 @@ public class TeslaEV implements ElectricVehicle {
 
     @Override
     @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
+    public Optional<EVState> getOdoMeter() throws EVException {
+        return Optional.of(getCurrentState(StateRefresh.REFRESH_IF_ONLINE));
+    }
+
+    @Override
+    @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public EVState getCurrentState(StateRefresh stateRefresh) throws EVException {
         EVState state = switch (stateRefresh) {
             case CACHED_OR_NULL -> currentState;
@@ -152,6 +158,7 @@ public class TeslaEV implements ElectricVehicle {
 
     @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public void debug() throws EVException {
+        getOdoMeter();
     }
 
     private EVException handleTeslaException(TeslaException e) {
