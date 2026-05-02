@@ -6,6 +6,7 @@ import homecontrol.services.config.ConfigService;
 import homecontrol.services.config.EVChargingStrategy;
 import homecontrol.services.config.Mode;
 import homecontrol.services.config.PeakStrategy;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.powercontrol.PowerPeakService;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
 import io.quarkus.qute.Template;
@@ -18,6 +19,8 @@ import jakarta.ws.rs.core.Response;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.LocalDate;
+import java.util.EnumSet;
+import java.util.List;
 
 @Path("/config")
 public class ConfigResource {
@@ -56,9 +59,15 @@ public class ConfigResource {
                 .data("o1", configService.getO1())
                 .data("o2", configService.getO2())
                 .data("o3", configService.getO3())
-                .data("minimumPVYield", configService.getMinimumPVYield())
-                .data("minimumExport", configService.getMinimumExport())
-                .data("tariffEntries", configService.getTariffEntries());
+                .data("minimumPVYieldExp1", configService.getMinimumPVYieldExp1())
+                .data("minimumExportExp1", configService.getMinimumExportExp1())
+                .data("maxHoldAtMinChargingExp1", configService.getMaxHoldAtMinChargingExp1())
+                .data("minimumPVYieldExp2", configService.getMinimumPVYieldExp2())
+                .data("minimumExportExp2", configService.getMinimumExportExp2())
+                .data("maxHoldAtMinChargingExp2", configService.getMaxHoldAtMinChargingExp2())
+                .data("tariffEntries", configService.getTariffEntries())
+                .data("allNotificationTypes", NotificationType.values())
+                .data("enabledNotificationTypes", configService.getEnabledNotificationTypes());
     }
 
     @POST
@@ -67,14 +76,19 @@ public class ConfigResource {
                                @FormParam("strategy") PeakStrategy peakStrategy,
                                @FormParam("batteryLevelX") int batteryLevelX,
                                @FormParam("batteryLevelY") int batteryLevelY,
-                               @FormParam("minimumPVYield") int minimumPVYield,
-                               @FormParam("minimumExport") int minimumExport,
+                               @FormParam("minimumPVYieldExp1") int minimumPVYieldExp1,
+                               @FormParam("minimumExportExp1") int minimumExportExp1,
+                               @FormParam("maxHoldAtMinChargingExp1") int maxHoldAtMinChargingExp1,
+                               @FormParam("minimumPVYieldExp2") int minimumPVYieldExp2,
+                               @FormParam("minimumExportExp2") int minimumExportExp2,
+                               @FormParam("maxHoldAtMinChargingExp2") int maxHoldAtMinChargingExp2,
                                @FormParam("p1") EVChargingStrategy.Type p1,
                                @FormParam("p2") EVChargingStrategy.Type p2,
                                @FormParam("p3") EVChargingStrategy.Type p3,
                                @FormParam("o1") EVChargingStrategy.Type o1,
                                @FormParam("o2") EVChargingStrategy.Type o2,
-                               @FormParam("o3") EVChargingStrategy.Type o3
+                               @FormParam("o3") EVChargingStrategy.Type o3,
+                               @FormParam("notificationTypes") List<NotificationType> notificationTypes
                                ) {
         if (mode.equals(Mode.OFF) && configService.getCurrentMode().equals(Mode.ON)) {
             //when turned off, make sure to set default settings to the charger
@@ -85,8 +99,12 @@ public class ConfigResource {
         configService.setBatteryLevelX(batteryLevelX);
         configService.setBatteryLevelY(batteryLevelY);
         configService.setPeakStrategy(peakStrategy);
-        configService.setMinimumPVYield(minimumPVYield);
-        configService.setMinimumExport(minimumExport);
+        configService.setMinimumPVYieldExp1(minimumPVYieldExp1);
+        configService.setMinimumPVYieldExp2(minimumPVYieldExp2);
+        configService.setMinimumExportExp1(minimumExportExp1);
+        configService.setMinimumExportExp2(minimumExportExp2);
+        configService.setMaxHoldAtMinChargingExp1(maxHoldAtMinChargingExp1);
+        configService.setMaxHoldAtMinChargingExp2(maxHoldAtMinChargingExp2);
         configService.setP1(p1);
         configService.setP2(p2);
         configService.setP3(p3);
@@ -94,6 +112,10 @@ public class ConfigResource {
         configService.setO2(o2);
         configService.setO3(o3);
 
+        configService.setEnabledNotificationTypes(
+                notificationTypes == null || notificationTypes.isEmpty()
+                        ? EnumSet.noneOf(NotificationType.class)
+                        : EnumSet.copyOf(notificationTypes));
         configService.persist();
         return Response.seeOther(URI.create("/config")).build();
     }

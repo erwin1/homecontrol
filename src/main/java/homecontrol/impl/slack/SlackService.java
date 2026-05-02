@@ -1,6 +1,8 @@
 package homecontrol.impl.slack;
 
+import homecontrol.services.config.ConfigService;
 import homecontrol.services.notications.NotificationService;
+import homecontrol.services.notications.NotificationType;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -26,10 +28,16 @@ public class SlackService implements NotificationService {
     @Inject
     SlackService slackService;
 
+    @Inject
+    ConfigService configService;
+
     @Override
-    public void sendNotification(String text) {
+    public void sendNotification(NotificationType level, String text) {
+        if (!configService.getEnabledNotificationTypes().contains(level)) {
+            return;
+        }
         //need to subscribe (and ignore any results) because Async runs lazy
-        slackService.doSendNotification(text).subscribe().with(e -> {
+        slackService.doSendNotification(level.name() + ": " + text).subscribe().with(e -> {
             //ok
         }, e -> {
             Logger.getLogger(SlackService.class.getName()).info("Error sending message to slack "+e);

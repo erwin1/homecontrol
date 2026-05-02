@@ -5,6 +5,7 @@ import homecontrol.services.ev.EVException;
 import homecontrol.services.powermeter.ActivePower;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -16,229 +17,278 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class PowerCalculatorTest {
 
     @Inject
+    private OptimalExportChargingService optimalExportChargingService;
+    
+    @Inject
     PowerCalculator powerCalculator;
     EVChargingStrategy exp = new EVChargingStrategy(EVChargingStrategy.Type.EXP);
     EVChargingStrategy max = new EVChargingStrategy(EVChargingStrategy.Type.MAX);
     EVChargingStrategy maxOpt = new EVChargingStrategy(EVChargingStrategy.Type.MAX_OPT);
-    EVChargingStrategy expPlus = new EVChargingStrategy(EVChargingStrategy.Type.EXP_PLUS, 100, 500);
+    EVChargingStrategy expOpt1 = new EVChargingStrategy(EVChargingStrategy.Type.EXP_OPT1, 100, 500, 2);
+    EVChargingStrategy expOpt2 = new EVChargingStrategy(EVChargingStrategy.Type.EXP_OPT1, 100, 500, 2);
 
     int defaultMonthlyPeak = 2500;
     int minimumChargingA = 5;
 
+    @BeforeEach
+    public void beforeEach() {
+        optimalExportChargingService.reset();
+    }
+
+    @Test
+    public void testOptExp2a() throws EVException {
+        optimalExportChargingService.reset();
+        assertEquals(9, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:05", -500, 0), defaultMonthlyPeak, 3000, 1500,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(9, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:06", 1500, 0), defaultMonthlyPeak, 1000, 2000,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(5, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:07", 1500, 0), defaultMonthlyPeak, 1000, 2000,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(5, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:08", 600, 0), defaultMonthlyPeak, 1000, 1100,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(0, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:09", 600, 0), defaultMonthlyPeak, 1000, 1100,  minimumChargingA, optimalExportChargingService
+        ));
+    }
+
+    @Test
+    public void testOptExp2b() throws EVException {
+        optimalExportChargingService.reset();
+        assertEquals(9, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:05", -500, 0), defaultMonthlyPeak, 3000, 1500,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(9, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:06", 1500, 0), defaultMonthlyPeak, 1000, 2000,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(5, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:07", 1500, 0), defaultMonthlyPeak, 1000, 2000,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(5, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:08", 600, 0), defaultMonthlyPeak, 1000, 1100,  minimumChargingA, optimalExportChargingService
+        ));
+        assertEquals(14, powerCalculator.calculateOptimalChargingA(
+                expOpt2, activePower("05:05:09", -2000, 0), defaultMonthlyPeak, 1000, 1100,  minimumChargingA, optimalExportChargingService
+        ));
+    }
+
     @Test
     public void testExp1() throws EVException {
         assertEquals(9, powerCalculator.calculateOptimalChargingA(
-                exp, activePower("05:05:05", -500, 0), defaultMonthlyPeak, 3000, 1500, minimumChargingA
+                exp, activePower("05:05:05", -500, 0), defaultMonthlyPeak, 3000, 1500,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExp2() throws EVException {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
-                exp, activePower("05:05:05", 1000, 0), defaultMonthlyPeak, 2000, 2200, minimumChargingA
+                exp, activePower("05:05:05", 1000, 0), defaultMonthlyPeak, 2000, 2200,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExp3() throws EVException {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
-                exp, activePower("05:05:05", 500, 0), defaultMonthlyPeak, 2000, 1500, minimumChargingA
+                exp, activePower("05:05:05", 500, 0), defaultMonthlyPeak, 2000, 1500,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExp3b() throws EVException {
         assertEquals(0, powerCalculator.calculateOptimalChargingA(
-                exp, activePower("05:05:05", 600, 0), defaultMonthlyPeak, 2000, 1500, minimumChargingA
+                exp, activePower("05:05:05", 600, 0), defaultMonthlyPeak, 2000, 1500,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExp4() throws EVException {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
-                exp, activePower("05:05:05", -1200, 0), defaultMonthlyPeak, 2000, 0, minimumChargingA
+                exp, activePower("05:05:05", -1200, 0), defaultMonthlyPeak, 2000, 0, minimumChargingA,  optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax1() {
         assertEquals(12, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:01:00", 0, 0), defaultMonthlyPeak, 0, 0, minimumChargingA
+                max, activePower("00:01:00", 0, 0), defaultMonthlyPeak, 0, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax2() {
         assertEquals(16, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:01:00", -1000, 0), defaultMonthlyPeak, 1000, 0, minimumChargingA
+                max, activePower("00:01:00", -1000, 0), defaultMonthlyPeak, 1000, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax3() {
         assertEquals(16, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:01:00", -1000, 0), defaultMonthlyPeak, 2000, 0, minimumChargingA
+                max, activePower("00:01:00", -1000, 0), defaultMonthlyPeak, 2000, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax4() {
         assertEquals(11, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:07:30", 0, 1250), defaultMonthlyPeak, 0, 0, minimumChargingA
+                max, activePower("00:07:30", 0, 1250), defaultMonthlyPeak, 0, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax5() {
         assertEquals(9, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 0, 0, minimumChargingA
+                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 0, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax6() {
         assertEquals(9, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 1000, 0, minimumChargingA
+                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 1000, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax7() {
         assertEquals(15, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 1000, 1500, minimumChargingA
+                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 1000, 1500,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax8() {
         assertEquals(18, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 2000, 2000, minimumChargingA
+                max, activePower("00:07:30", 500, 1250), defaultMonthlyPeak, 2000, 2000,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax9() {
         assertEquals(20, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:07:30", -500, 1250), defaultMonthlyPeak, 2000, 1500, minimumChargingA
+                max, activePower("00:07:30", -500, 1250), defaultMonthlyPeak, 2000, 1500,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax10() {
         assertEquals(29, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:10:00", -500, 1000), defaultMonthlyPeak, 2000, 1500, minimumChargingA
+                max, activePower("00:10:00", -500, 1000), defaultMonthlyPeak, 2000, 1500,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax11() {
         assertEquals(22, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:13:30", 1200, 2000), defaultMonthlyPeak, 0, 1200, minimumChargingA
+                max, activePower("00:13:30", 1200, 2000), defaultMonthlyPeak, 0, 1200,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMax12() {
         assertEquals(6, powerCalculator.calculateOptimalChargingA(
-                max, activePower("00:10:00", 1200, 2000), defaultMonthlyPeak, 0, 1200, minimumChargingA
+                max, activePower("00:10:00", 1200, 2000), defaultMonthlyPeak, 0, 1200,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMaxOpt1() {
         assertEquals(6, powerCalculator.calculateOptimalChargingA(
-                maxOpt, activePower("00:00:30", 1500, 100), defaultMonthlyPeak, 0, 1380, minimumChargingA
+                maxOpt, activePower("00:00:30", 1500, 100), defaultMonthlyPeak, 0, 1380,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMaxOpt2() {
         assertEquals(10, powerCalculator.calculateOptimalChargingA(
-                maxOpt, activePower("00:01:30", 1500, 150), defaultMonthlyPeak, 0, 1380, minimumChargingA
+                maxOpt, activePower("00:01:30", 1500, 150), defaultMonthlyPeak, 0, 1380,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMaxOpt3() {
         assertEquals(11, powerCalculator.calculateOptimalChargingA(
-                maxOpt, activePower("00:03:00", 2600, 350), defaultMonthlyPeak, 0, 2420, minimumChargingA
+                maxOpt, activePower("00:03:00", 2600, 350), defaultMonthlyPeak, 0, 2420,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMaxOpt4() {
         assertEquals(9, powerCalculator.calculateOptimalChargingA(
-                maxOpt, activePower("00:03:00", 2600, 600), defaultMonthlyPeak, 0, 2420, minimumChargingA
+                maxOpt, activePower("00:03:00", 2600, 600), defaultMonthlyPeak, 0, 2420,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMaxOpt5() {
         assertEquals(11, powerCalculator.calculateOptimalChargingA(
-                maxOpt, activePower("00:03:00", 2600, 150), defaultMonthlyPeak, 0, 2420, minimumChargingA
+                maxOpt, activePower("00:03:00", 2600, 150), defaultMonthlyPeak, 0, 2420,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testMaxOpt6() {
         assertEquals(11, powerCalculator.calculateOptimalChargingA(
-                maxOpt, activePower("00:03:00", 300, 150), defaultMonthlyPeak, 0, 0, minimumChargingA
+                maxOpt, activePower("00:03:00", 300, 150), defaultMonthlyPeak, 0, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus1() {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:00:00", -600, 0), defaultMonthlyPeak, 800, 0, minimumChargingA
+                expOpt1, activePower("00:00:00", -600, 0), defaultMonthlyPeak, 800, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus2() {
         assertEquals(6, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:00:00", -200, 0), defaultMonthlyPeak, 1500, 1100, minimumChargingA
+                expOpt1, activePower("00:00:00", -200, 0), defaultMonthlyPeak, 1500, 1100,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus3() {
         assertEquals(0, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:10:00",2000, 2000), defaultMonthlyPeak, 800, 1100, minimumChargingA
+                expOpt1, activePower("00:10:00",2000, 2000), defaultMonthlyPeak, 800, 1100,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus4() {
         assertEquals(0, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:10:00", 1000, 2000), defaultMonthlyPeak, 1800, 1100, minimumChargingA
+                expOpt1, activePower("00:10:00", 1000, 2000), defaultMonthlyPeak, 1800, 1100,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus5() {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:10:00", 500, 1965), defaultMonthlyPeak, 1800, 1100, minimumChargingA
+                expOpt1, activePower("00:10:00", 500, 1965), defaultMonthlyPeak, 1800, 1100,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus6() {
-        assertEquals(0, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:10:00",500, 2400), defaultMonthlyPeak, 1800, 1100, minimumChargingA
+        assertEquals(5, powerCalculator.calculateOptimalChargingA(
+                expOpt1, activePower("00:10:00",500, 2400), defaultMonthlyPeak, 1800, 1100,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus7() {
-        assertEquals(0, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:05:00",500, 1500), defaultMonthlyPeak, 1800, 1100, minimumChargingA
+        assertEquals(5, powerCalculator.calculateOptimalChargingA(
+                expOpt1, activePower("00:05:00",500, 1500), defaultMonthlyPeak, 1800, 1100,  minimumChargingA, optimalExportChargingService
         ));
     }
 
     @Test
     public void testExpPlus8() {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
-                expPlus, activePower("00:10:00",-500, 2000), defaultMonthlyPeak, 1000, 0, minimumChargingA
+                expOpt1, activePower("00:10:00",-500, 2000), defaultMonthlyPeak, 1000, 0,  minimumChargingA, optimalExportChargingService
         ));
     }
 

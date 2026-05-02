@@ -35,7 +35,7 @@
             <div class="config-card">
                 <h2>Charging power settings</h2>
                 <div class="charging-power-settings">
-               <select name="batteryLevelX">
+                   <select name="batteryLevelX">
                         <option value="30"{#if batteryLevelX == 30} selected="selected"{/if}>30%</option>
                         <option value="40"{#if batteryLevelX == 40} selected="selected"{/if}>40%</option>
                         <option value="50"{#if batteryLevelX == 50} selected="selected"{/if}>50%</option>
@@ -47,7 +47,7 @@
                         <option value="90"{#if batteryLevelX == 90} selected="selected"{/if}>90%</option>
                         <option value="95"{#if batteryLevelX == 95} selected="selected"{/if}>95%</option>
                         <option value="100"{#if batteryLevelX == 100} selected="selected"{/if}>100%</option>
-                </select>       <select name="batteryLevelY">
+                </select>           <select name="batteryLevelY">
                         <option value="30"{#if batteryLevelY == 30} selected="selected"{/if}>30%</option>
                         <option value="40"{#if batteryLevelY == 40} selected="selected"{/if}>40%</option>
                         <option value="50"{#if batteryLevelY == 50} selected="selected"{/if}>50%</option>
@@ -61,62 +61,100 @@
                         <option value="100"{#if batteryLevelY == 100} selected="selected"{/if}>100%</option>
                     </select>
 
-0% | ------------- | ------------- | ------------- | 100%
+0% | ----------------- | ----------------- | ----------------- | 100%
 
 
 PEAK    <select name="p1"><option{#if p1.toString() == "EXP"} selected="selected"{/if}>EXP</option>
-        <option value="EXP_PLUS"{#if p1.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option value="EXP_OPT1"{#if p1.toString() == "EXP_OPT1"} selected="selected"{/if}>EXP_OPT1</option>
+        <option value="EXP_OPT2"{#if p1.toString() == "EXP_OPT2"} selected="selected"{/if}>EXP_OPT2</option>
         <option{#if p1.toString() == "MAX"} selected="selected"{/if}>MAX</option>
         <option value="MAX_OPT"{#if p1.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
 </select>     <select name="p2"><option{#if p2.toString() == "EXP"} selected="selected"{/if}>EXP</option>
-        <option value="EXP_PLUS"{#if p2.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option value="EXP_OPT1"{#if p2.toString() == "EXP_OPT1"} selected="selected"{/if}>EXP_OPT1</option>
+        <option value="EXP_OPT2"{#if p2.toString() == "EXP_OPT2"} selected="selected"{/if}>EXP_OPT2</option>
         <option{#if p2.toString() == "MAX"} selected="selected"{/if}>MAX</option>
         <option value="MAX_OPT"{#if p2.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
 </select>       <select name="p3"><option{#if p3.toString() == "EXP"} selected="selected"{/if}>EXP</option>
-        <option value="EXP_PLUS" {#if p3.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option value="EXP_OPT1" {#if p3.toString() == "EXP_OPT1"} selected="selected"{/if}>EXP_OPT1</option>
+        <option value="EXP_OPT2"{#if p3.toString() == "EXP_OPT2"} selected="selected"{/if}>EXP_OPT2</option>
         <option{#if p3.toString() == "MAX"} selected="selected"{/if}>MAX</option>
         <option value="MAX_OPT"{#if p3.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
 </select>
 HOURS
 
  OFF    <select name="o1"><option{#if o1.toString() == "EXP"}  selected="selected"{/if}>EXP</option>
-        <option value="EXP_PLUS"{#if o1.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option value="EXP_OPT1"{#if o1.toString() == "EXP_OPT1"} selected="selected"{/if}>EXP_OPT1</option>
+        <option value="EXP_OPT2"{#if o1.toString() == "EXP_OPT2"} selected="selected"{/if}>EXP_OPT2</option>
         <option{#if o1.toString() == "MAX"} selected="selected"{/if}>MAX</option>
         <option value="MAX_OPT"{#if o1.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
 </select>     <select name="o2"><option{#if o2.toString() == "EXP"} selected="selected"{/if}>EXP</option>
-        <option value="EXP_PLUS"{#if o2.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option value="EXP_OPT1"{#if o2.toString() == "EXP_OPT1"} selected="selected"{/if}>EXP_OPT1</option>
+        <option value="EXP_OPT2"{#if o2.toString() == "EXP_OPT2"} selected="selected"{/if}>EXP_OPT2</option>
         <option{#if o2.toString() == "MAX"} selected="selected"{/if}>MAX</option>
         <option value="MAX_OPT"{#if o2.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
 </select>       <select name="o3"><option{#if o3.toString() == "EXP"} selected="selected"{/if}>EXP</option>
-        <option value="EXP_PLUS"{#if o3.toString() == "EXP_PLUS"} selected="selected"{/if}>EXP+</option>
+        <option value="EXP_OPT1"{#if o3.toString() == "EXP_OPT1"} selected="selected"{/if}>EXP_OPT1</option>
+        <option value="EXP_OPT2"{#if o3.toString() == "EXP_OPT2"} selected="selected"{/if}>EXP_OPT2</option>
         <option{#if o3.toString() == "MAX"} selected="selected"{/if}>MAX</option>
         <option value="MAX_OPT"{#if o3.toString() == "MAX_OPT"} selected="selected"{/if}>OPT</option>
 </select>
 HOURS
                 </div>
 
-                <h3>EXP+</h3>
+                <h3>EXP_OPT1</h3>
                 <div class="form-group">
-                    <label for="minimumPVYield">Minimum PV Yield:</label>
-                    <select name="minimumPVYield" id="minimumPVYield">
-                        <option value="0"{#if minimumPVYield == 0} selected="selected"{/if}>0 W</option>
-                        <option value="100"{#if minimumPVYield == 100} selected="selected"{/if}>100 W</option>
-                        <option value="250"{#if minimumPVYield == 250} selected="selected"{/if}>250 W</option>
-                        <option value="500"{#if minimumPVYield == 500} selected="selected"{/if}>500 W</option>
-                        <option value="750"{#if minimumPVYield == 750} selected="selected"{/if}>750 W</option>
-                        <option value="1000"{#if minimumPVYield == 1000} selected="selected"{/if}>1000 W</option>
+                    <label for="minimumPVYieldExp1">Minimum PV Yield:</label>
+                    <select name="minimumPVYieldExp1" id="minimumPVYieldExp1">
+                        <option value="0"{#if minimumPVYieldExp1 == 0} selected="selected"{/if}>0 W</option>
+                        <option value="100"{#if minimumPVYieldExp1 == 100} selected="selected"{/if}>100 W</option>
+                        <option value="250"{#if minimumPVYieldExp1 == 250} selected="selected"{/if}>250 W</option>
+                        <option value="500"{#if minimumPVYieldExp1 == 500} selected="selected"{/if}>500 W</option>
+                        <option value="750"{#if minimumPVYieldExp1 == 750} selected="selected"{/if}>750 W</option>
+                        <option value="1000"{#if minimumPVYieldExp1 == 1000} selected="selected"{/if}>1000 W</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="minimumExport">Minimum Export:</label>
-                    <select name="minimumExport" id="minimumExport">
-                        <option value="0"{#if minimumExport == 0} selected="selected"{/if}>0 W</option>
-                        <option value="100"{#if minimumExport == 100} selected="selected"{/if}>100 W</option>
-                        <option value="250"{#if minimumExport == 250} selected="selected"{/if}>250 W</option>
-                        <option value="500"{#if minimumExport == 500} selected="selected"{/if}>500 W</option>
-                        <option value="750"{#if minimumExport == 750} selected="selected"{/if}>750 W</option>
-                        <option value="1000"{#if minimumExport == 1000} selected="selected"{/if}>1000 W</option>
+                    <label for="minimumExportExp1">Minimum Export:</label>
+                    <select name="minimumExportExp1" id="minimumExportExp1">
+                        <option value="0"{#if minimumExportExp1 == 0} selected="selected"{/if}>0 W</option>
+                        <option value="100"{#if minimumExportExp1 == 100} selected="selected"{/if}>100 W</option>
+                        <option value="250"{#if minimumExportExp1 == 250} selected="selected"{/if}>250 W</option>
+                        <option value="500"{#if minimumExportExp1 == 500} selected="selected"{/if}>500 W</option>
+                        <option value="750"{#if minimumExportExp1 == 750} selected="selected"{/if}>750 W</option>
+                        <option value="1000"{#if minimumExportExp1 == 1000} selected="selected"{/if}>1000 W</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label for="maxHoldAtMinChargingExp1">Maximum ticks to hold at minimum charging:</label>
+                    <input type="number" step="1" name="maxHoldAtMinChargingExp1" id="maxHoldAtMinChargingExp1" value="{maxHoldAtMinChargingExp1}">
+                </div>
+
+                <h3>EXP_OPT2</h3>
+                <div class="form-group">
+                    <label for="minimumPVYieldExp2">Minimum PV Yield:</label>
+                    <select name="minimumPVYieldExp2" id="minimumPVYieldExp2">
+                        <option value="0"{#if minimumPVYieldExp2 == 0} selected="selected"{/if}>0 W</option>
+                        <option value="100"{#if minimumPVYieldExp2 == 100} selected="selected"{/if}>100 W</option>
+                        <option value="250"{#if minimumPVYieldExp2 == 250} selected="selected"{/if}>250 W</option>
+                        <option value="500"{#if minimumPVYieldExp2 == 500} selected="selected"{/if}>500 W</option>
+                        <option value="750"{#if minimumPVYieldExp2 == 750} selected="selected"{/if}>750 W</option>
+                        <option value="1000"{#if minimumPVYieldExp2 == 1000} selected="selected"{/if}>1000 W</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="minimumExportExp2">Minimum Export:</label>
+                    <select name="minimumExportExp2" id="minimumExportExp2">
+                        <option value="0"{#if minimumExportExp2 == 0} selected="selected"{/if}>0 W</option>
+                        <option value="100"{#if minimumExportExp2 == 100} selected="selected"{/if}>100 W</option>
+                        <option value="250"{#if minimumExportExp2 == 250} selected="selected"{/if}>250 W</option>
+                        <option value="500"{#if minimumExportExp2 == 500} selected="selected"{/if}>500 W</option>
+                        <option value="750"{#if minimumExportExp2 == 750} selected="selected"{/if}>750 W</option>
+                        <option value="1000"{#if minimumExportExp2 == 1000} selected="selected"{/if}>1000 W</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="maxHoldAtMinChargingExp2">Maximum ticks to hold at minimum charging:</label>
+                    <input type="number" step="1" name="maxHoldAtMinChargingExp2" id="maxHoldAtMinChargingExp2" value="{maxHoldAtMinChargingExp2}">
                 </div>
             </div>
 
@@ -135,6 +173,19 @@ HOURS
                         <option{#if peakstrategy.toString() == "STATIC_LIMITED"} selected="selected"{/if}>STATIC_LIMITED</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="config-card">
+                <h2>Notifications</h2>
+                {#for type in allNotificationTypes}
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="notificationTypes" value="{type}"
+                            {#if enabledNotificationTypes.contains(type)}checked="checked"{/if}>
+                        {type}
+                    </label>
+                </div>
+                {/for}
             </div>
 
             <div class="config-card">

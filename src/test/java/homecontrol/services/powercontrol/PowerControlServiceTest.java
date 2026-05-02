@@ -1,5 +1,6 @@
 package homecontrol.services.powercontrol;
 
+import homecontrol.metrics.DetailedMetricsService;
 import homecontrol.metrics.MetricsLogger;
 import homecontrol.services.config.*;
 import homecontrol.services.ev.Charger;
@@ -38,6 +39,8 @@ public class PowerControlServiceTest {
     private NotificationService notificationService;
     @InjectMock
     private MetricsLogger metricsLogger;
+    @InjectMock
+    private DetailedMetricsService detailedMetricsService;
 
     @InjectMock
     private EVControlService evControlService;
@@ -48,6 +51,8 @@ public class PowerControlServiceTest {
     @BeforeEach
     public void beforeEach() {
         Mockito.clearInvocations();
+        Mockito.when(detailedMetricsService.getRecentExport(Mockito.anyInt())).thenReturn(BigDecimal.ZERO);
+        Mockito.when(detailedMetricsService.getRecentImport(Mockito.anyInt())).thenReturn(BigDecimal.valueOf(1000));
     }
 
     @Test
@@ -110,7 +115,7 @@ public class PowerControlServiceTest {
     public void testMax2() throws EVException {
         presetState(TimeType.OFF, 4800, 800, 0, 0, 50);
         powerControlService.controlEVCharging();
-        checkChargingStartedAt(36);
+        checkChargingStartedAt(32);
     }
 
     @Test
@@ -181,7 +186,7 @@ public class PowerControlServiceTest {
         Mockito.clearInvocations(evControlService);
         presetState(ZonedDateTime.parse("2023-10-28T11:05:00+02:00"), 5000, 1500, 2860, avg, 50, 4000);
         powerControlService.controlEVCharging();
-        checkKeepsChargingAt(34);
+        checkKeepsChargingAt(32);
     }
 
     @Test
@@ -268,7 +273,7 @@ public class PowerControlServiceTest {
 
         EVChargingStrategy typeExp = new EVChargingStrategy(EVChargingStrategy.Type.EXP);
         EVChargingStrategy typeMax = new EVChargingStrategy(EVChargingStrategy.Type.MAX);
-        EVChargingStrategy typeMin = new EVChargingStrategy(EVChargingStrategy.Type.EXP_PLUS, 100, 500);
+        EVChargingStrategy typeMin = new EVChargingStrategy(EVChargingStrategy.Type.EXP_OPT1, 100, 500, 2);
 
 
         evChargingConfig.addConfig(60, TimeType.PEAK, typeExp);

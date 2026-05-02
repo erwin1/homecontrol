@@ -3,6 +3,7 @@ package homecontrol.services.powercontrol;
 import homecontrol.metrics.MetricsLogger;
 import homecontrol.services.config.ConfigService;
 import homecontrol.services.ev.*;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
@@ -32,6 +33,7 @@ public class EVControlService {
 
     private Charger.State storedChargerState;
     private ElectricVehicle connectedVehicle;
+
     private Integer currentPowerA;
 
     public ElectricVehicle getConnectedVehicle() {
@@ -53,13 +55,13 @@ public class EVControlService {
                     EVState evState = ev.getCurrentState(StateRefresh.REFRESH_ALWAYS);
                     if (!evState.getCharging_state().equalsIgnoreCase("Disconnected")) {
                         if (selected != null) {
-                            notificationService.sendNotification("Detect Vehicle Conflict: More than 1 vehicle connected. Selected "+selected.getName());
+                            notificationService.sendNotification(NotificationType.ERROR, "Detect Vehicle Conflict: More than 1 vehicle connected. Selected "+selected.getName());
                         } else {
                             selected = ev;
                         }
                     }
                 } catch (EVException e) {
-                    notificationService.sendNotification("Detect Vehicle: error contacting "+ev.getName()+" "+e);
+                    notificationService.sendNotification(NotificationType.ERROR, "Detect Vehicle: error contacting "+ev.getName()+" "+e);
                 }
             }
         }
@@ -72,6 +74,8 @@ public class EVControlService {
         }
         metricsLogger.logEVCharging("VEHICLE_DETECTED_"+connectedVehicle.getName().toUpperCase(), 0);
         metricsLogger.logChargerDataPoint(connectedVehicle.getName());
+        notificationService.sendNotification(NotificationType.INFO, "Vehicle connected : "+connectedVehicle.getName());
+
     }
 
     public boolean handleChargerState(Charger.State newState) {
@@ -83,6 +87,7 @@ public class EVControlService {
                 LOGGER.info("disable charging so it does not start automatically on next plug-in");
                 stopCharging();
                 connectedVehicle = null;
+                notificationService.sendNotification(NotificationType.INFO, "Vehicle disconnected");
             } else if (storedChargerState.equals(Charger.State.NotConnected)) {
                 //previously not connected, so have to detect vehicle
                 detectConnectedVehicle();
@@ -100,7 +105,7 @@ public class EVControlService {
 
     public void changeCharging(int powerA) {
         boolean haveToCharge = powerA >= configService.getMinimumChargingA();
-        LOGGER.log(Level.INFO,"haveToCharge=" + haveToCharge+ " currentPowerA="+currentPowerA+" powerA="+powerA+" chargetState="+ storedChargerState);
+        LOGGER.log(Level.INFO,"haveToCharge=" + haveToCharge+ " currentPowerA="+currentPowerA+" powerA="+powerA+" chargerState="+ storedChargerState);
         if (haveToCharge) {
             if (currentPowerA == null || powerA != currentPowerA.intValue()) {
                 metricsLogger.logEVCharging("CHANGEAMPS", powerA);
@@ -108,7 +113,7 @@ public class EVControlService {
                 currentPowerA = powerA;
             }
         } else {
-            if (storedChargerState.equals(Charger.State.InProgress)) {
+            if (currentPowerA != null || storedChargerState.equals(Charger.State.InProgress)) {
                 stopCharging();
             }
         }

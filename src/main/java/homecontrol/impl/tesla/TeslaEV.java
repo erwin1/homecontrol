@@ -73,7 +73,7 @@ public class TeslaEV implements ElectricVehicle {
     @Override
     @Retry(maxRetries = 3, delay = 15, delayUnit = ChronoUnit.SECONDS, retryOn = EVException.class)
     public Optional<EVState> getOdoMeter() throws EVException {
-        return Optional.of(getCurrentState(StateRefresh.REFRESH_IF_ONLINE));
+        return Optional.ofNullable(getCurrentState(StateRefresh.REFRESH_ALWAYS));
     }
 
     @Override

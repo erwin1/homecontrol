@@ -4,6 +4,6 @@ package homecontrol.services.notications;
 
 public interface NotificationService {
 
-    void sendNotification(String text);
+    void sendNotification(NotificationType level, String text);
 
 }

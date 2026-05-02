@@ -2,6 +2,7 @@ package homecontrol.metrics;
 
 import homecontrol.services.config.ConfigService;
 import homecontrol.services.ev.*;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powercontrol.EVControlService;
 import homecontrol.services.powercontrol.PowerPeakService;
@@ -85,15 +86,13 @@ public class MetricsService {
         metrics.stream().forEach(m -> System.out.println(m.getTimestamp()+" in="+m.getImport()+" ex="+m.getExport()+" ev="+m.getEV()+" pv="+m.getPV()));
         BigDecimal totalUsage = totals.getImport().add(totals.getPV()).subtract(totals.getExport());
         BigDecimal totalUsageWithoutEV = totalUsage.subtract(totals.getEV());
-        BigDecimal home = totals.getImport().subtract(totals.getEV());
+        BigDecimal gridImportHome = totals.getImport().subtract(totals.getEV());
         StringBuilder msg = new StringBuilder();
         msg.append(label).append("\n");
-        msg.append("☀️ ").append(r1(totals.getPV())).append(" kWh   ⬇️ ").append(r1(totals.getImport())).append(" kWh   ⬆️ ").append(r1(totals.getExport())).append(" kWh\n");
-        msg.append("📊 ").append(r1(totalUsage)).append(" kWh   🏠 ").append(r1(totalUsageWithoutEV)).append(" kWh home ⬇️ ").append(r1(home)).append(" kWh grid");
-
+        msg.append("📊 ").append(r1(totalUsage)).append(" kWh    ☀️ ").append(r1(totalUsage.subtract(totals.getImport()))).append(" kWh    ⬇️ ").append(r1(totals.getImport())).append(" kWh\n");
+        msg.append("🏠 ").append(r1(totalUsageWithoutEV)).append(" kWh    ☀️ ").append(r1(totals.getPV().min(totalUsageWithoutEV))).append(" kWh    ⬇️ ").append(r1(gridImportHome)).append(" kWh\n");
         Map<String,BigDecimal> evDetails = getEVTotalsGroupedByLabel(start, end);
         if (!evDetails.isEmpty()) {
-            msg.append("\n🚗 ").append(r1(totals.getEV())).append(" kWh EV");
             BigDecimal totalin = totals.getImport();
             for (String vehicle : evDetails.keySet()) {
                 BigDecimal usage = evDetails.get(vehicle);
@@ -106,12 +105,15 @@ public class MetricsService {
                         gridForVehicle = totalin;
                         totalin = BigDecimal.ZERO;
                     }
-                    msg.append("\n  └ ").append(vehicle).append(": ").append(r1(usage)).append(" kWh ⬇️ ").append(r1(gridForVehicle)).append(" kWh grid");
+                    msg.append("🚗 ").append(r1(usage)).append(" kWh    ☀️ ").append(r1(usage.subtract(gridForVehicle))).append(" kWh    ⬇️ ").append(r1(gridForVehicle)).append(" kWh     ").append(vehicle).append("\n");
                 }
             }
         }
+        msg.append("\n");
+        msg.append("☀️ ").append(r1(totals.getPV())).append(" kWh\n");
+        msg.append("⬆️ ").append(r1(totals.getExport())).append(" kWh\n");
 
-        notificationService.sendNotification(msg.toString());
+        notificationService.sendNotification(NotificationType.SUMMARY, msg.toString());
     }
 
     @Scheduled(cron="0 5 7 1 * ?")
@@ -140,7 +142,7 @@ public class MetricsService {
                 if (ev.isConfigured() && ev.getName().equals(vehicleConfig.label())) {
                     try {
                         odo = ev.getOdoMeter();
-                    } catch (EVException e) {
+                    } catch (Exception e) {
                         LOGGER.log(Level.WARNING, "Failed to get ODO for " + vehicleConfig.label(), e);
                     }
                     break;
@@ -174,13 +176,12 @@ public class MetricsService {
     public LiveMetrics getLiveMetrics() {
         var tuple = Uni.combine().all().unis(
                 inverter.getCurrentYield(),
-                powerMeter.getPower(),
-                charger.getActivePower()
+                powerMeter.getPower()
         ).asTuple().await().atMost(Duration.ofSeconds(10));
         MonthlyPowerPeak monthlyPowerPeak = tuple.getItem2().getMonthlyPowerPeak();
         int currentYield = tuple.getItem1();
         ActivePower activePower = tuple.getItem2().getActivePower();
-        int chargerW = tuple.getItem3();
+        int chargerW = charger.getLastKnownActivePower();
 
 
         long gridInOutW = activePower.getActivePower();

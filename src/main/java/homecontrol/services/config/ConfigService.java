@@ -1,5 +1,6 @@
 package homecontrol.services.config;
 
+import homecontrol.services.notications.NotificationType;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -33,11 +34,23 @@ public class ConfigService {
     @ConfigProperty(name = "batteryLevelY")
     int batteryLevelY;
 
-    @ConfigProperty(name = "minimumPVYield")
-    int minimumPVYield;
+    @ConfigProperty(name = "minimumPVYieldExp1")
+    int minimumPVYieldExp1;
 
-    @ConfigProperty(name = "minimumExport")
-    int minimumExport;
+    @ConfigProperty(name = "minimumExportExp1")
+    int minimumExportExp1;
+
+    @ConfigProperty(name = "maxHoldAtMinChargingExp1", defaultValue = "2")
+    int maxHoldAtMinChargingExp1;
+
+    @ConfigProperty(name = "minimumPVYieldExp2")
+    int minimumPVYieldExp2;
+
+    @ConfigProperty(name = "minimumExportExp2")
+    int minimumExportExp2;
+
+    @ConfigProperty(name = "maxHoldAtMinChargingExp2", defaultValue = "2")
+    int maxHoldAtMinChargingExp2;
 
     @ConfigProperty(name = "p1")
     EVChargingStrategy.Type p1;
@@ -61,6 +74,11 @@ public class ConfigService {
     @ConfigProperty(name = "tariff")
     Optional<Map<String, String>> tariffConfig;
 
+    @ConfigProperty(name = "enabledNotificationTypes", defaultValue = "ERROR,INFO,SUMMARY,PEAK_WARNING,DEBUG")
+    Optional<String> enabledNotificationTypesRaw;
+
+    private Set<NotificationType> enabledNotificationTypes;
+
     @PostConstruct
     void initTariffs() {
         tariffConfig.ifPresent(map -> map.forEach((key, value) -> {
@@ -70,6 +88,13 @@ public class ConfigService {
                 LOGGER.log(Level.WARNING, "Skipping invalid tariff entry: " + key + "=" + value, e);
             }
         }));
+        enabledNotificationTypes = enabledNotificationTypesRaw
+                .filter(s -> !s.isEmpty())
+                .map(s -> Arrays.stream(s.split(","))
+                        .map(String::trim).filter(t -> !t.isEmpty())
+                        .map(NotificationType::valueOf)
+                        .collect(Collectors.toCollection(() -> EnumSet.noneOf(NotificationType.class))))
+                .orElse(EnumSet.noneOf(NotificationType.class));
     }
 
 
@@ -121,20 +146,52 @@ public class ConfigService {
         this.batteryLevelY = batteryLevelY;
     }
 
-    public int getMinimumPVYield() {
-        return minimumPVYield;
+    public int getMinimumPVYieldExp1() {
+        return minimumPVYieldExp1;
     }
 
-    public void setMinimumPVYield(int minimumPVYield) {
-        this.minimumPVYield = minimumPVYield;
+    public void setMinimumPVYieldExp1(int minimumPVYieldExp1) {
+        this.minimumPVYieldExp1 = minimumPVYieldExp1;
     }
 
-    public int getMinimumExport() {
-        return minimumExport;
+    public int getMinimumExportExp1() {
+        return minimumExportExp1;
     }
 
-    public void setMinimumExport(int minimumExport) {
-        this.minimumExport = minimumExport;
+    public void setMinimumExportExp1(int minimumExportExp1) {
+        this.minimumExportExp1 = minimumExportExp1;
+    }
+
+    public int getMaxHoldAtMinChargingExp1() {
+        return maxHoldAtMinChargingExp1;
+    }
+
+    public void setMaxHoldAtMinChargingExp1(int maxHoldAtMinChargingExp1) {
+        this.maxHoldAtMinChargingExp1 = maxHoldAtMinChargingExp1;
+    }
+
+    public int getMinimumPVYieldExp2() {
+        return minimumPVYieldExp2;
+    }
+
+    public void setMinimumPVYieldExp2(int minimumPVYieldExp2) {
+        this.minimumPVYieldExp2 = minimumPVYieldExp2;
+    }
+
+    public int getMinimumExportExp2() {
+        return minimumExportExp2;
+    }
+
+    public void setMinimumExportExp2(int minimumExportExp2) {
+        this.minimumExportExp2 = minimumExportExp2;
+    }
+
+    public int getMaxHoldAtMinChargingExp2() {
+        return maxHoldAtMinChargingExp2;
+    }
+
+    public void setMaxHoldAtMinChargingExp2(int maxHoldAtMinChargingExp2) {
+        this.maxHoldAtMinChargingExp2 = maxHoldAtMinChargingExp2;
     }
 
     public EVChargingStrategy.Type getP1() {
@@ -193,15 +250,61 @@ public class ConfigService {
         this.minimumChargingA = minimumChargingA;
     }
 
+    public Set<NotificationType> getEnabledNotificationTypes() {
+        return enabledNotificationTypes;
+    }
+
+    public void setEnabledNotificationTypes(Set<NotificationType> enabledNotificationTypes) {
+        this.enabledNotificationTypes = enabledNotificationTypes;
+    }
+
+
     public EVChargingConfigs getEVChargingConfigs() {
         EVChargingConfigs evChargingConfig = new EVChargingConfigs();
 
-        EVChargingStrategy p1 = new EVChargingStrategy(getP1(), getMinimumPVYield(), getMinimumExport());
-        EVChargingStrategy p2 = new EVChargingStrategy(getP2(), getMinimumPVYield(), getMinimumExport());
-        EVChargingStrategy p3 = new EVChargingStrategy(getP3(), getMinimumPVYield(), getMinimumExport());
-        EVChargingStrategy o1 = new EVChargingStrategy(getO1(), getMinimumPVYield(), getMinimumExport());
-        EVChargingStrategy o2 = new EVChargingStrategy(getO2(), getMinimumPVYield(), getMinimumExport());
-        EVChargingStrategy o3 = new EVChargingStrategy(getO3(), getMinimumPVYield(), getMinimumExport());
+        EVChargingStrategy p1, p2, p3, o1, o2, o3;
+        if (getP1().equals(EVChargingStrategy.Type.EXP_OPT1)) {
+            p1 = new EVChargingStrategy(getP1(), getMinimumPVYieldExp1(), getMinimumExportExp1(), getMaxHoldAtMinChargingExp1());
+        } else if (getP1().equals(EVChargingStrategy.Type.EXP_OPT2)) {
+            p1 = new EVChargingStrategy(getP1(), getMinimumPVYieldExp2(), getMinimumExportExp2(), getMaxHoldAtMinChargingExp2());
+        } else {
+            p1 = new EVChargingStrategy(getP1());
+        }
+        if (getP2().equals(EVChargingStrategy.Type.EXP_OPT1)) {
+            p2 = new EVChargingStrategy(getP2(), getMinimumPVYieldExp1(), getMinimumExportExp1(), getMaxHoldAtMinChargingExp1());
+        } else if (getP1().equals(EVChargingStrategy.Type.EXP_OPT2)) {
+            p2 = new EVChargingStrategy(getP2(), getMinimumPVYieldExp2(), getMinimumExportExp2(), getMaxHoldAtMinChargingExp2());
+        } else {
+            p2 = new EVChargingStrategy(getP2());
+        }
+        if (getP3().equals(EVChargingStrategy.Type.EXP_OPT1)) {
+            p3 = new EVChargingStrategy(getP3(), getMinimumPVYieldExp1(), getMinimumExportExp1(), getMaxHoldAtMinChargingExp1());
+        } else if (getP3().equals(EVChargingStrategy.Type.EXP_OPT2)) {
+            p3 = new EVChargingStrategy(getP3(), getMinimumPVYieldExp2(), getMinimumExportExp2(), getMaxHoldAtMinChargingExp2());
+        } else {
+            p3 = new EVChargingStrategy(getP3());
+        }
+        if (getO1().equals(EVChargingStrategy.Type.EXP_OPT1)) {
+            o1 = new EVChargingStrategy(getO1(), getMinimumPVYieldExp1(), getMinimumExportExp1(), getMaxHoldAtMinChargingExp1());
+        } else if (getP1().equals(EVChargingStrategy.Type.EXP_OPT2)) {
+            o1 = new EVChargingStrategy(getO1(), getMinimumPVYieldExp2(), getMinimumExportExp2(), getMaxHoldAtMinChargingExp2());
+        } else {
+            o1 = new EVChargingStrategy(getO1());
+        }
+        if (getO2().equals(EVChargingStrategy.Type.EXP_OPT1)) {
+            o2 = new EVChargingStrategy(getO2(), getMinimumPVYieldExp1(), getMinimumExportExp1(), getMaxHoldAtMinChargingExp1());
+        } else if (getO1().equals(EVChargingStrategy.Type.EXP_OPT2)) {
+            o2 = new EVChargingStrategy(getO2(), getMinimumPVYieldExp2(), getMinimumExportExp2(),getMaxHoldAtMinChargingExp2());
+        } else {
+            o2 = new EVChargingStrategy(getO2());
+        }
+        if (getO3().equals(EVChargingStrategy.Type.EXP_OPT1)) {
+            o3 = new EVChargingStrategy(getO3(), getMinimumPVYieldExp1(), getMinimumExportExp1(), getMaxHoldAtMinChargingExp1());
+        } else if (getO3().equals(EVChargingStrategy.Type.EXP_OPT2)) {
+            o3 = new EVChargingStrategy(getO3(), getMinimumPVYieldExp2(), getMinimumExportExp2(), getMaxHoldAtMinChargingExp2());
+        } else {
+            o3 = new EVChargingStrategy(getO3());
+        }
 
         evChargingConfig.addConfig(getBatteryLevelX(), TimeType.PEAK, p1);
         evChargingConfig.addConfig(getBatteryLevelX(), TimeType.OFF, o1);
@@ -235,8 +338,12 @@ public class ConfigService {
             System.out.println("properties = " + properties);
             properties.setProperty("batteryLevelX", String.valueOf(getBatteryLevelX()));
             properties.setProperty("batteryLevelY", String.valueOf(getBatteryLevelY()));
-            properties.setProperty("minimumPVYield", String.valueOf(getMinimumPVYield()));
-            properties.setProperty("minimumExport", String.valueOf(getMinimumExport()));
+            properties.setProperty("minimumPVYieldExp1", String.valueOf(getMinimumPVYieldExp1()));
+            properties.setProperty("minimumExportExp1", String.valueOf(getMinimumExportExp1()));
+            properties.setProperty("maxHoldAtMinChargingExp1", String.valueOf(getMaxHoldAtMinChargingExp1()));
+            properties.setProperty("minimumPVYieldExp2", String.valueOf(getMinimumPVYieldExp2()));
+            properties.setProperty("minimumExportExp2", String.valueOf(getMinimumExportExp2()));
+            properties.setProperty("maxHoldAtMinChargingExp2", String.valueOf(getMaxHoldAtMinChargingExp2()));
             properties.setProperty("p1", String.valueOf(getP1()));
             properties.setProperty("p2", String.valueOf(getP2()));
             properties.setProperty("p3", String.valueOf(getP3()));
@@ -247,6 +354,8 @@ public class ConfigService {
             properties.setProperty("peakstrategy", String.valueOf(peakStrategy));
             properties.setProperty("minimumChargingA", String.valueOf(minimumChargingA));
             properties.setProperty("mode", String.valueOf(currentMode));
+            properties.setProperty("enabledNotificationTypes",
+                    enabledNotificationTypes.stream().map(Enum::name).collect(Collectors.joining(",")));
             properties.stringPropertyNames().stream()
                     .filter(k -> k.startsWith("tariff."))
                     .collect(Collectors.toList())

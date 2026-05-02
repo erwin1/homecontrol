@@ -2,24 +2,24 @@ package homecontrol.impl.sma;
 
 import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.StateRefresh;
-import homecontrol.services.powercontrol.EVControlService;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Asynchronous;
 import org.eclipse.microprofile.faulttolerance.Retry;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.io.BufferedInputStream;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
-import java.net.URLConnection;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,12 +36,44 @@ public class SMACharger implements Charger {
     @ConfigProperty(name = "EVCHARGING_CONSUMPTIONMETER_OFFSET", defaultValue = "0")
     long consumptionMeterOffset;
 
+    private final ReentrantLock requestLock = new ReentrantLock();
+
     private String token;
 
     private State state;
 
+    private int activePower;
+
+
+    @PreDestroy
+    public void preDestroy() {
+        LOGGER.info("logging out SMA charger");
+        logout();
+    }
+
+    private void logout() {
+        if (token != null) {
+            try {
+                HttpsURLConnection conn = HttpHelper.openConnection("https://"+ chargerIp +"/api/v1/refreshtoken?refreshToken=" + token);
+                try {
+                    conn.setRequestProperty("Accept", "application/json");
+                    conn.setRequestMethod("DELETE");
+
+                    BufferedInputStream reader = new BufferedInputStream(conn.getInputStream());
+                    LOGGER.info("logout response = " + conn.getResponseCode()+" "+ new String(reader.readAllBytes()));
+
+                    token = null;
+                } finally {
+                    conn.disconnect();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     @Override
-    @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
+    @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public State getCurrentState(StateRefresh stateRefresh) {
         var state = switch (stateRefresh) {
             case CACHED_OR_NULL -> this.state;
@@ -61,10 +93,16 @@ public class SMACharger implements Charger {
 
     @Override
     @Asynchronous
-    @Retry(maxRetries = 3, delay = 2, delayUnit = ChronoUnit.SECONDS)
+    @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public Uni<Integer> getActivePower() {
         int activePower = (int) getLivePowerMeterReading();
+        this.activePower = activePower;
         return Uni.createFrom().item(activePower);
+    }
+
+    @Override
+    public int getLastKnownActivePower() {
+        return activePower;
     }
 
     @Override
@@ -99,6 +137,7 @@ public class SMACharger implements Charger {
     }
 
     private void put(String body) {
+        requestLock.lock();
         try {
             if (token == null) {
                 token = authenticate();
@@ -114,6 +153,8 @@ public class SMACharger implements Charger {
                 conn.setRequestProperty("Sec-Fetch-Mode", "cors");
                 conn.setRequestProperty("Sec-Fetch-Site", "same-origin");
                 conn.setRequestProperty("User-Agent", "homecontrol");
+
+                LOGGER.info("calling SMA charger PUT /api/v1/parameters/IGULD:SELF "+body);
 
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
                 writer.write(body);
@@ -143,10 +184,13 @@ public class SMACharger implements Charger {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            requestLock.unlock();
         }
     }
 
     public State getStateInternal() {
+        requestLock.lock();
         try {
             if (token == null) {
                 token = authenticate();
@@ -155,6 +199,8 @@ public class SMACharger implements Charger {
             try {
                 conn.setRequestProperty("Accept", "application/json");
                 conn.setRequestProperty("Authorization", "Bearer " + token);
+
+                LOGGER.info("calling SMA charger /api/v1/widgets/emobility?componentId=Plant:1");
 
                 if (conn.getResponseCode() == 401) {
                     token = null;
@@ -177,6 +223,8 @@ public class SMACharger implements Charger {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            requestLock.unlock();
         }
     }
 
@@ -189,6 +237,7 @@ public class SMACharger implements Charger {
     }
 
     private long getReadingByKey(String key) {
+        requestLock.lock();
         try {
             if (token == null) {
                 token = authenticate();
@@ -200,11 +249,14 @@ public class SMACharger implements Charger {
                 conn.setRequestProperty("Accept", "application/json");
                 conn.setRequestProperty("Authorization", "Bearer " + token);
 
+                LOGGER.info("calling SMA charger /api/v1/measurements/live for key "+key);
+
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
                 writer.write("[{\"componentId\":\"Plant:1\"}]");
                 writer.flush();
 
                 if (conn.getResponseCode() == 401) {
+                    LOGGER.info("SMA charger HTTP 401 result. setting token to null before trying again");
                     token = null;
                     throw new RuntimeException("auth error");
                 }
@@ -224,6 +276,8 @@ public class SMACharger implements Charger {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            requestLock.unlock();
         }
         return 0;
     }
@@ -235,6 +289,7 @@ public class SMACharger implements Charger {
                 conn.setDoOutput(true);
                 conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8");
                 conn.setRequestProperty("Accept", "application/json");
+                LOGGER.info("calling SMA charger /api/v1/token");
 
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
                 writer.write("grant_type=password&username=" + chargerUserName + "&password=" + chargerPassword);

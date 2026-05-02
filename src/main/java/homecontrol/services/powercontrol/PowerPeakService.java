@@ -4,6 +4,7 @@ import homecontrol.services.config.ConfigService;
 import homecontrol.services.config.PeakStrategy;
 import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.StateRefresh;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powermeter.ActivePower;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
@@ -73,7 +74,7 @@ public class PowerPeakService {
 
         if (this.monthlyPowerPeak != null) {
             if (!this.monthlyPowerPeak.getTimestamp().equals(currentMonthPeak.getTimestamp())) {
-                notificationService.sendNotification("!!! New Peak: "+currentMonthPeak.getValue()+"W\n"+currentMonthPeak.getTimestamp());
+                notificationService.sendNotification(NotificationType.PEAK_WARNING, "!!! New Peak: "+currentMonthPeak.getValue()+"W\n"+currentMonthPeak.getTimestamp());
             }
         }
         this.monthlyPowerPeak = currentMonthPeak;
@@ -101,7 +102,7 @@ public class PowerPeakService {
                         currentMonthPeak.getTimestamp(),
                         estimatedPeakW);
                 LOGGER.log(Level.SEVERE, message);
-                notificationService.sendNotification(message);
+                notificationService.sendNotification(NotificationType.PEAK_WARNING, message);
             }
         }
     }
@@ -119,7 +120,7 @@ public class PowerPeakService {
         ActivePower activePower = electricalPowerMeter.getActivePower().await().atMost(Duration.ofSeconds(10));
         int chargingW = 0;
         if (charger.getCurrentState(StateRefresh.CACHED).equals(Charger.State.InProgress)) {
-            chargingW = charger.getActivePower().await().atMost(Duration.ofSeconds(10));
+            chargingW = charger.getLastKnownActivePower();
         }
         return Tuple3.of(estimatePeakInCurrentPeriod(activePower, chargingW), activePower, chargingW);
     }

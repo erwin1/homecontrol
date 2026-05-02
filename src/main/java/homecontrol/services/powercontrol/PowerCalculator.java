@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 public class PowerCalculator {
     public static final Logger LOGGER = Logger.getLogger(PowerCalculator.class.getName());
 
-    public int calculateOptimalChargingA(EVChargingStrategy chargingStrategy, ActivePower activePower, int currentMonth15minPeak, int solarYieldW, int chargingW, int minimumChargingA) {
+    public int calculateOptimalChargingA(EVChargingStrategy chargingStrategy, ActivePower activePower, int currentMonth15minPeak, int solarYieldW, int chargingW, int minimumChargingA, OptimalExportChargingService optimalExportChargingService) {
         ZonedDateTime startOfPeriod = activePower.getTimestamp().minusMinutes(activePower.getTimestamp().getMinute() % 15).withSecond(0).withNano(0);
         long startOfPeriodEpoch = startOfPeriod.toEpochSecond();
 
@@ -41,8 +41,14 @@ public class PowerCalculator {
 
         int currentChargeAmps = Math.round(chargingW/voltage);
 
+        if (!(chargingStrategy.getType().equals(EVChargingStrategy.Type.EXP_OPT1) || chargingStrategy.getType().equals(EVChargingStrategy.Type.EXP_OPT2))) {
+            optimalExportChargingService.reset();
+        }
+
         int chargeAtAmps = switch (chargingStrategy.getType()) {
             case EXP -> Math.round(exportWhenChargingIsExcluded / voltage);
+            case EXP_OPT1 -> optimalExportChargingService.tick(activePower.getActivePower(), chargingW, powerDifferenceW, voltage, minimumChargingA, 32, solarYieldW, chargingStrategy.getMinPowerExportW(), chargingStrategy.getMinSolarYieldW(), chargingStrategy.getMaxHoldAtMinCharging());
+            case EXP_OPT2 -> optimalExportChargingService.tick(activePower.getActivePower(), chargingW, powerDifferenceW, voltage, minimumChargingA, 32, solarYieldW, chargingStrategy.getMinPowerExportW(), chargingStrategy.getMinSolarYieldW(), chargingStrategy.getMaxHoldAtMinCharging());
             case MAX -> (int)((chargingW + powerDifferenceW)/voltage);
             case MAX_OPT -> {
                 int newChargingAmps = (int)((chargingW + powerDifferenceW)/voltage);
@@ -65,20 +71,12 @@ public class PowerCalculator {
                 }
                 yield newChargingAmps;
             }
-            case EXP_PLUS -> {
-                if (powerDifferenceW >= minimumChargingW && solarYieldW >= chargingStrategy.getMinSolarYieldW() &&
-                        exportWhenChargingIsExcluded >= chargingStrategy.getMinPowerExportW()) {
-                    if (exportWhenChargingIsExcluded < minimumChargingW) {
-                        yield minimumChargingA;
-                    }
-                }
-                yield Math.round(exportWhenChargingIsExcluded * 1f / voltage);
-            }
         };
         chargeAtAmps = Math.max(chargeAtAmps, 0);
         if (chargeAtAmps < minimumChargingA) {
             chargeAtAmps = 0;
         }
+        chargeAtAmps = Math.min(chargeAtAmps, 32);
 
         LOGGER.log(Level.INFO, "\n-=-=-= Current values =-=-=-=-\n" +
                         "\tActive power from grid: {0}W\n" +

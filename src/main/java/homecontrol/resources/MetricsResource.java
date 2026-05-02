@@ -5,6 +5,7 @@ import homecontrol.metrics.CombinedMetrics;
 import homecontrol.metrics.LiveMetrics;
 import homecontrol.metrics.MetricsService;
 import homecontrol.metrics.Totals;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -12,7 +13,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
-import org.jboss.resteasy.annotations.LinkHeaderParam;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -42,7 +42,7 @@ public class MetricsResource {
     @Path("test")
     @Produces(MediaType.APPLICATION_JSON)
     public String test() {
-        notificationService.sendNotification("OK!");
+        notificationService.sendNotification(NotificationType.ERROR, "OK!");
         return "ok";
     }
 

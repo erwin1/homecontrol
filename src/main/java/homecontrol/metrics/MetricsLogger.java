@@ -2,6 +2,7 @@ package homecontrol.metrics;
 
 import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.ElectricVehicle;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powercontrol.EVControlService;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
@@ -122,7 +123,7 @@ public class MetricsLogger {
             }
         } catch(Exception e) {
             e.printStackTrace();
-            notificationService.sendNotification("MetricsLogger: Could not log hwep1 data "+e);
+            notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log hwep1 data "+e);
         }
 
         try {
@@ -135,7 +136,7 @@ public class MetricsLogger {
 
         } catch(Exception e) {
             e.printStackTrace();
-            notificationService.sendNotification("MetricsLogger: Could not log SMA PV data "+e);
+            notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log SMA PV data "+e);
         }
 
         try {
@@ -151,7 +152,7 @@ public class MetricsLogger {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            notificationService.sendNotification("MetricsLogger: Could not log SMA Charger data "+e);
+            notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log SMA Charger data "+e);
         }
 
         readFiles();
@@ -227,7 +228,7 @@ public class MetricsLogger {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            notificationService.sendNotification("MetricsLogger: Could not log extra SMA Charger data point "+e);
+            notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log extra SMA Charger data point "+e);
         }
     }
 
@@ -250,7 +251,7 @@ public class MetricsLogger {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            notificationService.sendNotification("MetricsLogger: Could not log EV Charging data "+e);
+            notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log EV Charging data "+e);
         }
     }
 

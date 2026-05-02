@@ -53,7 +53,7 @@ public class EVResource {
     @GET
     @Path("debug/sendreport")
     @Produces(MediaType.TEXT_PLAIN)
-    public String volvoreport() throws EVException, IOException {
+    public String evmonthly() throws EVException, IOException {
         metricsService.sendEVMonthly();
         return "ok";
     }

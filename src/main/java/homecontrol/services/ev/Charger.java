@@ -14,6 +14,8 @@ public interface Charger {
 
     Uni<Integer> getActivePower();
 
+    int getLastKnownActivePower();
+
     int getChargingMeterReading();
 
     void changeChargingAmps(int amps);

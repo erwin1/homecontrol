@@ -1,7 +1,7 @@
 package homecontrol.services.powercontrol;
 
-import homecontrol.impl.tesla.TeslaEV;
 import homecontrol.impl.tesla.TeslaException;
+import homecontrol.metrics.DetailedMetricsService;
 import homecontrol.services.config.ConfigService;
 import homecontrol.services.config.EVChargingStrategy;
 import homecontrol.services.config.Mode;
@@ -10,6 +10,7 @@ import homecontrol.services.ev.Charger;
 
 import homecontrol.services.ev.EVState;
 import homecontrol.services.ev.StateRefresh;
+import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powermeter.ActivePower;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
@@ -48,7 +49,10 @@ public class PowerControlService {
     private PowerPeakService powerPeakService;
     @Inject
     private EVControlService evControlService;
-
+    @Inject
+    DetailedMetricsService detailedMetricsService;
+    @Inject
+    OptimalExportChargingService optimalExportChargingService;
 
     @Scheduled(every = "1m", concurrentExecution = SKIP)
     public void controlEVCharging() {
@@ -99,7 +103,8 @@ public class PowerControlService {
                     powerPeakService.getCurrentMonth15minPeak(),
                     tuple.getItem2(),
                     tuple.getItem3(),
-                    configService.getMinimumChargingA());
+                    configService.getMinimumChargingA(),
+                    optimalExportChargingService);
 
             //STAP 4
             evControlService.changeCharging(chargeAmps);
@@ -116,7 +121,7 @@ public class PowerControlService {
                 }
             }
             if (alert) {
-                notificationService.sendNotification("Error in homecontrol: " + e.getMessage() + " " + e + " " + e.getStackTrace()[0].toString());
+                notificationService.sendNotification(NotificationType.ERROR, "Error in homecontrol: " + e.getMessage() + " " + e + " " + e.getStackTrace()[0].toString());
             }
         }
     }

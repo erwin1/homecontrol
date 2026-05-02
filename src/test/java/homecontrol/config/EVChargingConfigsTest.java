@@ -19,7 +19,7 @@ public class EVChargingConfigsTest {
         configs = new EVChargingConfigs();
         EVChargingStrategy typeExp = new EVChargingStrategy(EVChargingStrategy.Type.EXP);
         EVChargingStrategy typeMax = new EVChargingStrategy(EVChargingStrategy.Type.MAX);
-        EVChargingStrategy typeMin = new EVChargingStrategy(EVChargingStrategy.Type.EXP_PLUS, 100, 500);
+        EVChargingStrategy typeMin = new EVChargingStrategy(EVChargingStrategy.Type.EXP_OPT1, 100, 500, 2);
 
         configs.addConfig(50, TimeType.PEAK, typeExp);
         configs.addConfig(50, TimeType.OFF, typeMax);
@@ -35,14 +35,14 @@ public class EVChargingConfigsTest {
 
     @Test
     public void test2() {
-        assertEquals(EVChargingStrategy.Type.EXP_PLUS, configs.getEVChargingStrategy(50, TimeType.OFF).getType());
+        assertEquals(EVChargingStrategy.Type.EXP_OPT1, configs.getEVChargingStrategy(50, TimeType.OFF).getType());
         assertEquals(500, configs.getEVChargingStrategy(50, TimeType.OFF).getMinPowerExportW());
         assertEquals(100, configs.getEVChargingStrategy(50, TimeType.OFF).getMinSolarYieldW());
     }
 
     @Test
     public void test3() {
-        assertEquals(EVChargingStrategy.Type.EXP_PLUS, configs.getEVChargingStrategy(74, TimeType.OFF).getType());
+        assertEquals(EVChargingStrategy.Type.EXP_OPT1, configs.getEVChargingStrategy(74, TimeType.OFF).getType());
         assertEquals(500, configs.getEVChargingStrategy(50, TimeType.OFF).getMinPowerExportW());
         assertEquals(100, configs.getEVChargingStrategy(50, TimeType.OFF).getMinSolarYieldW());
     }
