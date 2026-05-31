@@ -53,6 +53,7 @@ function refreshData() {
             $("#evnotconnected").show();
             $("#evbatterylevel").html("");
         }
+        $("#evamps").html("Configured amps: " + d.evAmps + "A");
         {
         let tsString = d.timestamp;
         let tIndex = tsString.indexOf("T");

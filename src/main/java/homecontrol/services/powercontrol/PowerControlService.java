@@ -20,6 +20,7 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.logging.Level;
@@ -90,7 +91,7 @@ public class PowerControlService {
             //STAP 3
             Uni<ActivePower> activePowerUni = electricalPowerMeter.getActivePower();
             Uni<Integer> solarYieldUni = inverter.getCurrentYield();
-            Uni<Integer> chargingUni = charger.getActivePower();
+            Uni<Integer> chargingUni = charger.getActivePowerW();
 
             var tuple = Uni.combine().all().unis(
                     activePowerUni.ifNoItem().after(Duration.ofSeconds(30)).failWith(new RuntimeException("read activePower timeout")),
@@ -107,7 +108,7 @@ public class PowerControlService {
                     optimalExportChargingService);
 
             //STAP 4
-            evControlService.changeCharging(chargeAmps);
+            evControlService.changeCharging(chargeAmps, tuple.getItem1().getActiveVoltage().setScale(0, RoundingMode.HALF_UP).intValue());
 
         }catch (Exception e) {
             LOGGER.log(Level.SEVERE, "error in homecontrol: "+e.getMessage(), e);

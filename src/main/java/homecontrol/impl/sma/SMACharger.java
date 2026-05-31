@@ -42,7 +42,8 @@ public class SMACharger implements Charger {
 
     private State state;
 
-    private int activePower;
+    private int activePowerW;
+    private int currentChargingAmps;
 
 
     @PreDestroy
@@ -94,15 +95,20 @@ public class SMACharger implements Charger {
     @Override
     @Asynchronous
     @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
-    public Uni<Integer> getActivePower() {
+    public Uni<Integer> getActivePowerW() {
         int activePower = (int) getLivePowerMeterReading();
-        this.activePower = activePower;
+        this.activePowerW = activePower;
         return Uni.createFrom().item(activePower);
     }
 
     @Override
+    public int getCurrentChargingAmps() {
+        return this.currentChargingAmps;
+    }
+
+    @Override
     public int getLastKnownActivePower() {
-        return activePower;
+        return activePowerW;
     }
 
     @Override
@@ -120,11 +126,13 @@ public class SMACharger implements Charger {
     public void stopCharging() {
         String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
         put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4721\"}]}");
+        this.currentChargingAmps = 0;
     }
 
     @Override
-    public void changeChargingAmps(int amps) {
-        int powerW = amps * 230;
+    public void changeChargingAmps(int amps, int voltage) {
+        int powerW = amps * voltage;
+        LOGGER.fine("voltage = "+voltage+" amps = "+amps+" power = "+powerW);
         if (powerW < 1380) {
             powerW = 1380;
         }
@@ -134,6 +142,7 @@ public class SMACharger implements Charger {
         LOGGER.log(Level.INFO, "change amps to "+amps+"A converted to "+powerW+"W");
         String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
         put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4718\"},{\"channelId\":\"Parameter.Inverter.WMaxIn\",\"timestamp\":\""+d+"\",\"value\":"+powerW+"}]}");
+        this.currentChargingAmps = amps;
     }
 
     private void put(String body) {

@@ -93,7 +93,7 @@ public class ConfigResource {
         if (mode.equals(Mode.OFF) && configService.getCurrentMode().equals(Mode.ON)) {
             //when turned off, make sure to set default settings to the charger
             charger.startCharging();
-            charger.changeChargingAmps(32);
+            charger.changeChargingAmps(32, 230);
         }
         configService.setCurrentMode(mode);
         configService.setBatteryLevelX(batteryLevelX);

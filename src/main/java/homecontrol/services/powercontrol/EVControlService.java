@@ -103,13 +103,13 @@ public class EVControlService {
         return false;
     }
 
-    public void changeCharging(int powerA) {
+    public void changeCharging(int powerA, int voltage) {
         boolean haveToCharge = powerA >= configService.getMinimumChargingA();
         LOGGER.log(Level.INFO,"haveToCharge=" + haveToCharge+ " currentPowerA="+currentPowerA+" powerA="+powerA+" chargerState="+ storedChargerState);
         if (haveToCharge) {
             if (currentPowerA == null || powerA != currentPowerA.intValue()) {
                 metricsLogger.logEVCharging("CHANGEAMPS", powerA);
-                charger.changeChargingAmps(powerA);
+                charger.changeChargingAmps(powerA, voltage);
                 currentPowerA = powerA;
             }
         } else {

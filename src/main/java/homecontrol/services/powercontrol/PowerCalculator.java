@@ -63,7 +63,7 @@ public class PowerCalculator {
                         yield newChargingAmps - 1;
                     }
                 }
-                if (chargingW > 0) {
+                if (solarYieldW == 0 && chargingW > 0) {
                     int diffAmps = newChargingAmps - currentChargeAmps;
                     if (diffAmps > 0) {
                         newChargingAmps = currentChargeAmps;

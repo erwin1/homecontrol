@@ -12,7 +12,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import static org.mockito.Mockito.*;
 
@@ -39,38 +38,38 @@ public class EVControlServiceTest {
     @Test
     public void testChangeCharging1() throws EVException {
         preset(50, 0);
-        evControlService.changeCharging(9);
-        verify(charger).changeChargingAmps(9);
+        evControlService.changeCharging(9, 230);
+        verify(charger).changeChargingAmps(9, 230);
     }
 
     @Test
     public void testChangeCharging2() throws EVException {
         preset(50, 2000);
-        evControlService.changeCharging(10);
-        verify(charger).changeChargingAmps(10);
+        evControlService.changeCharging(10, 230);
+        verify(charger).changeChargingAmps(10, 230);
     }
 
     @Test
     public void testChangeCharging3() throws EVException {
         preset(50, 2000);
-        evControlService.changeCharging(0);
+        evControlService.changeCharging(0, 230);
         verify(charger).stopCharging();
     }
 
     @Test
     public void testChangeCharging4() throws EVException {
         preset(50, 1380);
-        evControlService.changeCharging(6);
+        evControlService.changeCharging(6, 230);
         verify(charger, never()).stopCharging();
-        verify(charger).changeChargingAmps(6);
+        verify(charger).changeChargingAmps(6, 230);
     }
 
     @Test
     public void testChangeCharging5() throws EVException {
         preset(50, 1100);
-        evControlService.changeCharging(32);
+        evControlService.changeCharging(32, 230);
         verify(charger, never()).stopCharging();
-        verify(charger).changeChargingAmps(32);
+        verify(charger).changeChargingAmps(32, 230);
     }
 
     private void preset(int batteryLevel, int power) throws EVException {

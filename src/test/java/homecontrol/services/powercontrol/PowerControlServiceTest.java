@@ -212,19 +212,19 @@ public class PowerControlServiceTest {
     }
 
     public void checkChargingStartedAt(int amps) throws EVException {
-        Mockito.verify(evControlService).changeCharging(Mockito.eq(amps));
+        Mockito.verify(evControlService).changeCharging(Mockito.eq(amps), Mockito.eq(220));
     }
 
     public void checkChargingStopped() throws EVException {
-        Mockito.verify(evControlService).changeCharging(Mockito.eq(0));
+        Mockito.verify(evControlService).changeCharging(Mockito.eq(0), Mockito.eq(220));
     }
 
     public void checkNoChange() throws EVException {
-        Mockito.verify(evControlService, Mockito.never()).changeCharging(Mockito.anyInt());
+        Mockito.verify(evControlService, Mockito.never()).changeCharging(Mockito.anyInt(), Mockito.eq(220));
     }
 
     public void checkKeepsChargingAt(int amps) throws EVException {
-        Mockito.verify(evControlService).changeCharging(Mockito.eq(amps));
+        Mockito.verify(evControlService).changeCharging(Mockito.eq(amps), Mockito.anyInt());
     }
 
     private void presetState(TimeType timeType, int solarYield, int powerUsageWithoutEV, int powerUsageEVCharging, int activePowerAverage, int currentBatteryLevel) throws EVException {
@@ -265,7 +265,7 @@ public class PowerControlServiceTest {
 
         Mockito.when(electricalPowerMeter.getActivePower()).thenReturn(Uni.createFrom().item(new ActivePower(ts, activePower, activePowerAverage, new BigDecimal(activeVoltage))));
         Mockito.when(inverter.getCurrentYield()).thenReturn(Uni.createFrom().item(solarYield));
-        Mockito.when(charger.getActivePower()).thenReturn(Uni.createFrom().item(powerUsageEVCharging));
+        Mockito.when(charger.getActivePowerW()).thenReturn(Uni.createFrom().item(powerUsageEVCharging));
     }
 
     private EVChargingConfigs powerConfig() {

@@ -12,13 +12,15 @@ public interface Charger {
 
     State getCurrentState(StateRefresh stateRefresh);
 
-    Uni<Integer> getActivePower();
+    Uni<Integer> getActivePowerW();
+
+    int getCurrentChargingAmps();
 
     int getLastKnownActivePower();
 
     int getChargingMeterReading();
 
-    void changeChargingAmps(int amps);
+    void changeChargingAmps(int amps, int voltage);
 
     void stopCharging();
 

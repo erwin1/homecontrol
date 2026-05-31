@@ -189,6 +189,7 @@ public class MetricsService {
         LiveMetrics metrics = new LiveMetrics();
         metrics.setTimestamp(ZonedDateTime.now());
         metrics.setPeakEstimateW(new BigDecimal(powerPeakService.estimatePeakInCurrentPeriod(activePower, 0)));
+        metrics.setEvAmps(charger.getCurrentChargingAmps());
 
         if (gridInOutW > 0) {
             metrics.setImportW(new BigDecimal(gridInOutW));

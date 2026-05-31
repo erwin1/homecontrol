@@ -10,12 +10,21 @@ public class LiveMetrics {
     private BigDecimal exportW;
     private BigDecimal pvW;
     private BigDecimal evW;
+    private int evAmps;
     private int evBatteryLevel;
     private boolean evConnected;
     private String evConnectedName;
     private BigDecimal peakEstimateW;
     private BigDecimal monthlyPowerPeakW;
     private ZonedDateTime monthlyPowerPeakTimestamp;
+
+    public int getEvAmps() {
+        return evAmps;
+    }
+
+    public void setEvAmps(int evAmps) {
+        this.evAmps = evAmps;
+    }
 
     public ZonedDateTime getTimestamp() {
         return timestamp;

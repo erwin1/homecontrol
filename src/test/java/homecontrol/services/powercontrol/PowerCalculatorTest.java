@@ -237,6 +237,15 @@ public class PowerCalculatorTest {
     }
 
     @Test
+    public void testMaxOpt7() {
+        assertEquals(15, powerCalculator.calculateOptimalChargingA(
+                maxOpt, activePower("00:03:00", 1600, 350), defaultMonthlyPeak, 1000, 2420,  minimumChargingA, optimalExportChargingService
+        ));
+    }
+
+
+
+    @Test
     public void testExpPlus1() {
         assertEquals(5, powerCalculator.calculateOptimalChargingA(
                 expOpt1, activePower("00:00:00", -600, 0), defaultMonthlyPeak, 800, 0,  minimumChargingA, optimalExportChargingService

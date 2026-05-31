@@ -107,6 +107,12 @@
     font-size: 0.875rem;
 }
 
+#evamps {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin-top: -3rem;
+}
+
 #monthPeakDate {
     position: absolute;
     top: 0;
