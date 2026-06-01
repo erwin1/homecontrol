@@ -10,11 +10,20 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Asynchronous;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedInputStream;
-import java.io.BufferedWriter;
-import java.io.OutputStreamWriter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.*;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -45,11 +54,138 @@ public class SMACharger implements Charger {
     private int activePowerW;
     private int currentChargingAmps;
 
+    private final HttpClient http;
+
+    public SMACharger() {
+        this.http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(5))
+                .version(HttpClient.Version.HTTP_1_1) // simple embedded server
+                .build();
+    }
 
     @PreDestroy
     public void preDestroy() {
+        http.close();
         LOGGER.info("logging out SMA charger");
         logout();
+    }
+
+    /**
+     * Performs one SEMP read of state + active power.
+     *
+     * <p>Thread-safe: {@link HttpClient} is thread-safe and this method keeps no
+     * mutable state, so the single bean instance can be called concurrently from
+     * schedulers and REST endpoints. Checked exceptions are wrapped as unchecked
+     * so callers (e.g. a {@code @Scheduled} poller) don't have to declare them.
+     */
+    public BigDecimal readActivePower() {
+        try {
+            Document doc = parse(httpGet("http://"+chargerIp+"/SEMP"));
+            return parseDouble(firstText(doc, "AveragePower"));
+        } catch (IOException e) {
+            throw new UncheckedIOException("SEMP read failed", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("SEMP read interrupted", e);
+        } catch (Exception e) {
+            throw new RuntimeException("SEMP parse failed", e);
+        }
+    }
+
+    /** Single GET, full-body read (connection returns to the pool — nothing to close). */
+    private byte[] httpGet(String target) throws IOException, InterruptedException {
+        HttpRequest req = HttpRequest.newBuilder(URI.create(target))
+                .timeout(Duration.ofSeconds(5))
+                .header("Accept", "application/xml")
+                .GET()
+                .build();
+        HttpResponse<byte[]> resp = http.send(req, HttpResponse.BodyHandlers.ofByteArray());
+        if (resp.statusCode() / 100 != 2) {
+            throw new IOException("HTTP " + resp.statusCode() + " from " + target);
+        }
+        return resp.body();
+    }
+
+    /**
+     * Reads the granular charging-session state from {@code /SEMP/Parameters}.
+     * This is a second (still unauthenticated) GET, so poll it on its own cadence
+     * — session state changes far less often than active power.
+     */
+    public Charger.State readChargeStateSEMP() {
+        try {
+            Document doc = parse(httpGet("http://" + chargerIp + "/SEMP/Parameters"));
+            String raw = parameterValue(doc, "Measurement.Operation.EVeh.ChaStt");
+            if (raw.isEmpty()) {
+                throw new IllegalStateException("ChaStt channel not present in /SEMP/Parameters");
+            }
+            return getState(Integer.parseInt(raw.trim()));
+        } catch (IOException e) {
+            throw new UncheckedIOException("SEMP parameters read failed", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("SEMP parameters read interrupted", e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("SEMP parameters parse failed", e);
+        }
+    }
+
+    private Charger.State getState(int tag) {
+        return switch (tag) {
+            case 200111 -> State.NotConnected;
+            case 200112 -> State.Waiting;
+            case 200113 -> State.InProgress;
+            default -> null;
+        };
+    }
+
+    private static Document parse(byte[] xml) throws Exception {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(false);
+        trySetFeature(dbf, "http://apache.org/xml/features/disallow-doctype-decl", true);
+        trySetFeature(dbf, "http://xml.org/sax/features/external-general-entities", false);
+        DocumentBuilder db = dbf.newDocumentBuilder();
+        return db.parse(new ByteArrayInputStream(xml));
+    }
+
+    private static String firstText(Document doc, String tag) {
+        return firstText(doc.getDocumentElement(), tag);
+    }
+
+    private static String firstText(Element scope, String tag) {
+        if (scope == null) return "";
+        NodeList nl = scope.getElementsByTagName(tag);
+        if (nl.getLength() == 0) return "";
+        String t = nl.item(0).getTextContent();
+        return (t == null) ? "" : t.trim();
+    }
+
+    /** Returns the {@code <value>} of the {@code <Parameter>} matching channelId, or "". */
+    private static String parameterValue(Document doc, String channelId) {
+        NodeList params = doc.getElementsByTagName("Parameter");
+        for (int i = 0; i < params.getLength(); i++) {
+            Element p = (Element) params.item(i);
+            if (channelId.equals(firstText(p, "channelId"))) {
+                return firstText(p, "value");
+            }
+        }
+        return "";
+    }
+
+    private static BigDecimal parseDouble(String s) {
+        try {
+            return BigDecimal.valueOf(Double.parseDouble(s.trim()));
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private static void trySetFeature(DocumentBuilderFactory dbf, String f, boolean v) {
+        try {
+            dbf.setFeature(f, v);
+        } catch (Exception ignored) {
+        }
     }
 
     private void logout() {
@@ -96,7 +232,7 @@ public class SMACharger implements Charger {
     @Asynchronous
     @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public Uni<Integer> getActivePowerW() {
-        int activePower = (int) getLivePowerMeterReading();
+        int activePower = readActivePower().intValue();
         this.activePowerW = activePower;
         return Uni.createFrom().item(activePower);
     }
@@ -130,6 +266,7 @@ public class SMACharger implements Charger {
     }
 
     @Override
+    @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public void changeChargingAmps(int amps, int voltage) {
         int powerW = amps * voltage;
         LOGGER.fine("voltage = "+voltage+" amps = "+amps+" power = "+powerW);
@@ -201,37 +338,7 @@ public class SMACharger implements Charger {
     public State getStateInternal() {
         requestLock.lock();
         try {
-            if (token == null) {
-                token = authenticate();
-            }
-            HttpsURLConnection conn = HttpHelper.openConnection("https://"+chargerIp+"/api/v1/widgets/emobility?componentId=Plant:1");
-            try {
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setRequestProperty("Authorization", "Bearer " + token);
-
-                LOGGER.info("calling SMA charger /api/v1/widgets/emobility?componentId=Plant:1");
-
-                if (conn.getResponseCode() == 401) {
-                    token = null;
-                    throw new RuntimeException("auth error");
-                }
-                String body = new String(conn.getInputStream().readAllBytes());
-                conn.getInputStream().close();
-                JsonObject object = new JsonObject(body);
-
-                if (object.getString("err") != null) {
-                    throw new RuntimeException("error from charger " + object.getString("err"));
-                }
-
-                State status = State.valueOf(object.getString("chargeStatus"));
-                return status;
-            } finally {
-                conn.disconnect();
-            }
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            return readChargeStateSEMP();
         } finally {
             requestLock.unlock();
         }
@@ -239,10 +346,6 @@ public class SMACharger implements Charger {
 
     public long getConsumptionMeterReading() {
         return getReadingByKey("Measurement.Metering.GridMs.TotWhIn.ChaSta") + consumptionMeterOffset;
-    }
-
-    public long getLivePowerMeterReading() {
-        return getReadingByKey("Measurement.Metering.GridMs.TotWIn.ChaSta");
     }
 
     private long getReadingByKey(String key) {
