@@ -1,14 +1,15 @@
 package homecontrol.resources;
 
-import homecontrol.impl.sma.SMACharger;
 import homecontrol.metrics.ReportConfig;
 import homecontrol.services.config.ConfigService;
 import homecontrol.services.config.EVChargingStrategy;
 import homecontrol.services.config.Mode;
 import homecontrol.services.config.PeakStrategy;
+import homecontrol.services.ev.Charger;
 import homecontrol.services.notications.NotificationType;
 import homecontrol.services.powercontrol.PowerPeakService;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
+import homecontrol.services.powermeter.HomeBatteryPowerMeter;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
@@ -18,6 +19,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.List;
@@ -25,7 +27,7 @@ import java.util.List;
 @Path("/config")
 public class ConfigResource {
     @Inject
-    SMACharger charger;
+    Charger charger;
     @Inject
     ElectricalPowerMeter powerMeter;
 
@@ -92,7 +94,6 @@ public class ConfigResource {
                                ) {
         if (mode.equals(Mode.OFF) && configService.getCurrentMode().equals(Mode.ON)) {
             //when turned off, make sure to set default settings to the charger
-            charger.startCharging();
             charger.changeChargingAmps(32, 230);
         }
         configService.setCurrentMode(mode);

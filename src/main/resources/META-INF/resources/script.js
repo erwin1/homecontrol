@@ -1,5 +1,6 @@
 var ratioChart;
 var gridGauge;
+var batteryGauge;
 var evGauge;
 var pvGauge;
 var usageGauge;
@@ -11,22 +12,26 @@ var newAverageEstimateGauge;
 
 function refreshData() {
         $.get( "/metrics/live", function( d ) {
-        var totalUsageWithoutEV = (d.importW - d.exportW + d.pvW - d.evW);
+        var totalUsageWithoutEV = (d.importW - d.exportW + d.pvW - d.evW - d.homeBatteryPowerW);
+        var fromBattery = d.homeBatteryPowerW < 0 ? -d.homeBatteryPowerW : 0;
+        var toBattery = d.homeBatteryPowerW > 0 ? d.homeBatteryPowerW : 0;
         const data = {
           datasets: [{
             label: '',
-            data: [d.pvW, d.importW],
+            data: [d.pvW, fromBattery, d.importW],
             backgroundColor: [
               '#43de66',
+              "#fab923",
               '#e3110e'
             ]
           },
           {
             label: '',
-            data: [d.evW, totalUsageWithoutEV, d.exportW ],
+            data: [d.evW, totalUsageWithoutEV, toBattery, d.exportW ],
             backgroundColor: [
               '#25a5f5',
               '#deadff',
+              "#eef734",
               '#cfcfcf'
             ]
           }]
@@ -44,6 +49,8 @@ function refreshData() {
         } else {
             gridGauge.refresh(-d.exportW);
         }
+        batteryGauge.refresh(d.homeBatteryPowerW);
+        $("#homebatterylevel").html(d.homeBatteryStateOfCharge+" %");
         if (d.evConnected) {
             $("#evconnected").show();
             $("#evnotconnected").hide();
@@ -127,6 +134,34 @@ $(function () {
           stroke_linecap: 'round'
         }
       });
+
+    batteryGauge = new JustGage({
+        id: "batteryGauge", // the id of the html element
+        value: 0,
+        min: -800,
+        max: 800,
+        symbol: ' W',
+        label: "",
+        decimals: 0,
+        gaugeWidthScale: 0.6,
+        differential: true,
+        levelColors: ["#fab923", "#eef734"],
+        //noGradient: true,
+        labelMinFontSize: 14,
+        minLabelMinFontSize: 14,
+        maxLabelMinFontSize: 14,
+        pointer: true,
+        pointerOptions: {
+          toplength: -15,
+          bottomlength: 50,
+          bottomwidth: 10,
+          color: '#92938e',
+          stroke: '#ffffff',
+          stroke_width: 1,
+          stroke_linecap: 'round'
+        }
+      });
+
     evGauge = new JustGage({
         id: "evGauge",
         value: 0,

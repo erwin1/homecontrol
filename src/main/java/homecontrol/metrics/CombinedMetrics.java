@@ -13,6 +13,10 @@ public class CombinedMetrics {
     private BigDecimal pvt2;
     private BigDecimal evt1;
     private BigDecimal evt2;
+    private BigDecimal homeBatteryImportt1;
+    private BigDecimal homeBatteryImportt2;
+    private BigDecimal homeBatteryExportt1;
+    private BigDecimal homeBatteryExportt2;
 
     public CombinedMetrics() {
         importt1 = BigDecimal.ZERO;
@@ -23,6 +27,10 @@ public class CombinedMetrics {
         evt2 = BigDecimal.ZERO;
         pvt1 = BigDecimal.ZERO;
         pvt2 = BigDecimal.ZERO;
+        homeBatteryImportt1 = BigDecimal.ZERO;
+        homeBatteryImportt2 = BigDecimal.ZERO;
+        homeBatteryExportt1 = BigDecimal.ZERO;
+        homeBatteryExportt2 = BigDecimal.ZERO;
     }
 
     public ZonedDateTime getTimestamp() {
@@ -34,7 +42,7 @@ public class CombinedMetrics {
     }
 
     public BigDecimal getTotalUsage() {
-        return getImport().subtract(getExport()).add(getPV());
+        return getImport().subtract(getExport()).add(getPV()).add(getHomeBatteryExport()).subtract(getHomeBatteryImport());
     }
 
     public BigDecimal getTotalUsageWithoutEV() {
@@ -121,4 +129,43 @@ public class CombinedMetrics {
         return evt1.add(evt2);
     }
 
+    public BigDecimal getHomeBatteryImport() {
+        return homeBatteryImportt1.add(homeBatteryImportt2);
+    }
+
+    public BigDecimal getHomeBatteryExport() {
+        return homeBatteryExportt1.add(homeBatteryExportt2);
+    }
+
+    public BigDecimal getHomeBatteryImportt1() {
+        return homeBatteryImportt1;
+    }
+
+    public void setHomeBatteryImportt1(BigDecimal homeBatteryImportt1) {
+        this.homeBatteryImportt1 = homeBatteryImportt1;
+    }
+
+    public BigDecimal getHomeBatteryImportt2() {
+        return homeBatteryImportt2;
+    }
+
+    public void setHomeBatteryImportt2(BigDecimal homeBatteryImportt2) {
+        this.homeBatteryImportt2 = homeBatteryImportt2;
+    }
+
+    public BigDecimal getHomeBatteryExportt1() {
+        return homeBatteryExportt1;
+    }
+
+    public void setHomeBatteryExportt1(BigDecimal homeBatteryExportt1) {
+        this.homeBatteryExportt1 = homeBatteryExportt1;
+    }
+
+    public BigDecimal getHomeBatteryExportt2() {
+        return homeBatteryExportt2;
+    }
+
+    public void setHomeBatteryExportt2(BigDecimal homeBatteryExportt2) {
+        this.homeBatteryExportt2 = homeBatteryExportt2;
+    }
 }

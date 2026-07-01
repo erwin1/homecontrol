@@ -8,6 +8,7 @@ import homecontrol.services.powercontrol.EVControlService;
 import homecontrol.services.powercontrol.PowerPeakService;
 import homecontrol.services.powermeter.ActivePower;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
+import homecontrol.services.powermeter.HomeBatteryPowerMeter;
 import homecontrol.services.powermeter.MonthlyPowerPeak;
 import homecontrol.services.solar.Inverter;
 import io.quarkus.mailer.Mail;
@@ -41,6 +42,9 @@ public class MetricsService {
 
     @Inject
     private ElectricalPowerMeter powerMeter;
+
+    @Inject
+    private HomeBatteryPowerMeter homeBatteryPowerMeter;
 
     @Inject
     Inverter inverter;
@@ -84,13 +88,13 @@ public class MetricsService {
         List<CombinedMetrics> metrics = getCombinedMetrics(start, end, "day");
         CombinedMetrics totals = calculateTotals(metrics);
         metrics.stream().forEach(m -> System.out.println(m.getTimestamp()+" in="+m.getImport()+" ex="+m.getExport()+" ev="+m.getEV()+" pv="+m.getPV()));
-        BigDecimal totalUsage = totals.getImport().add(totals.getPV()).subtract(totals.getExport());
-        BigDecimal totalUsageWithoutEV = totalUsage.subtract(totals.getEV());
+        BigDecimal totalUsage = totals.getTotalUsage();
+        BigDecimal totalUsageWithoutEV = totals.getTotalUsageWithoutEV();
         BigDecimal gridImportHome = totals.getImport().subtract(totals.getEV());
         StringBuilder msg = new StringBuilder();
         msg.append(label).append("\n");
-        msg.append("📊 ").append(r1(totalUsage)).append(" kWh    ☀️ ").append(r1(totalUsage.subtract(totals.getImport()))).append(" kWh    ⬇️ ").append(r1(totals.getImport())).append(" kWh\n");
-        msg.append("🏠 ").append(r1(totalUsageWithoutEV)).append(" kWh    ☀️ ").append(r1(totals.getPV().min(totalUsageWithoutEV))).append(" kWh    ⬇️ ").append(r1(gridImportHome)).append(" kWh\n");
+        msg.append("📊 ").append(r1(totalUsage)).append(" kWh    ☀️ ").append(r1(totalUsage.subtract(totals.getImport()))).append(" kWh   \uD83D\uDD0B ").append(r1(totals.getHomeBatteryExport())).append(" kWh    ⬇️ ").append(r1(totals.getImport())).append(" kWh\n");
+        msg.append("🏠 ").append(r1(totalUsageWithoutEV)).append(" kWh    ☀️ ").append(r1((totals.getPV().subtract(gridImportHome)).min(totalUsageWithoutEV))).append(" kWh    ⬇️ ").append(r1(gridImportHome)).append(" kWh\n");
         Map<String,BigDecimal> evDetails = getEVTotalsGroupedByLabel(start, end);
         if (!evDetails.isEmpty()) {
             BigDecimal totalin = totals.getImport();
@@ -111,9 +115,10 @@ public class MetricsService {
         }
         msg.append("\n");
         msg.append("☀️ ").append(r1(totals.getPV())).append(" kWh\n");
+        msg.append("\uD83D\uDD0B ").append(r1(totals.getHomeBatteryImport())).append(" kWh\n");
         msg.append("⬆️ ").append(r1(totals.getExport())).append(" kWh\n");
 
-        notificationService.sendNotification(NotificationType.SUMMARY, msg.toString());
+        notificationService.sendNotification(NotificationType.IMPORTANT, msg.toString());
     }
 
     @Scheduled(cron="0 5 7 1 * ?")
@@ -176,12 +181,15 @@ public class MetricsService {
     public LiveMetrics getLiveMetrics() {
         var tuple = Uni.combine().all().unis(
                 inverter.getCurrentYield(),
-                powerMeter.getPower()
+                powerMeter.getPower(),
+                homeBatteryPowerMeter.getActivePower(),
+                homeBatteryPowerMeter.getCurrentReading(),
+                charger.getActivePowerW()
         ).asTuple().await().atMost(Duration.ofSeconds(10));
         MonthlyPowerPeak monthlyPowerPeak = tuple.getItem2().getMonthlyPowerPeak();
         int currentYield = tuple.getItem1();
         ActivePower activePower = tuple.getItem2().getActivePower();
-        int chargerW = charger.getLastKnownActivePower();
+        int chargerW = tuple.getItem5();
 
 
         long gridInOutW = activePower.getActivePower();
@@ -196,6 +204,10 @@ public class MetricsService {
         } else {
             metrics.setExportW(new BigDecimal(gridInOutW).negate());
         }
+
+        metrics.setHomeBatteryPowerW(new BigDecimal(tuple.getItem3().getActivePower()));
+        metrics.setHomeBatteryStateOfCharge(tuple.getItem4().getState_of_charge_pct());
+
         metrics.setEvW(new BigDecimal(chargerW));
         metrics.setPvW(new BigDecimal(currentYield));
         metrics.setEvConnected(!charger.getCurrentState(StateRefresh.CACHED).equals(Charger.State.NotConnected));
@@ -265,6 +277,32 @@ public class MetricsService {
                 return v;
             });
         }
+        list = getMetrics("homeBatteryImport", start, end, period, null);
+        for(Metrics m : list) {
+            combined.compute(m.getTimestamp(), (k,v) -> {
+                if (v == null) {
+                    v = new CombinedMetrics();
+                    v.setTimestamp(m.getTimestamp());
+                }
+                System.out.println("IMPORT "+m.getValuet1()+" "+m.getValuet2());
+                v.setHomeBatteryImportt1(m.getValuet1());
+                v.setHomeBatteryImportt2(m.getValuet2());
+                return v;
+            });
+        }
+        list = getMetrics("homeBatteryExport", start, end, period, null);
+        for(Metrics m : list) {
+            combined.compute(m.getTimestamp(), (k,v) -> {
+                if (v == null) {
+                    v = new CombinedMetrics();
+                    v.setTimestamp(m.getTimestamp());
+                }
+                System.out.println("EXPORt "+m.getValuet1()+" "+m.getValuet2());
+                v.setHomeBatteryExportt1(m.getValuet1());
+                v.setHomeBatteryExportt2(m.getValuet2());
+                return v;
+            });
+        }
         return combined.values().stream().sorted(Comparator.comparing(CombinedMetrics::getTimestamp)).collect(Collectors.toList());
     }
 
@@ -300,6 +338,10 @@ public class MetricsService {
             list = metricsLogger.getGridExport();
         } else if (type.equals("pv")) {
             list = metricsLogger.getPv();
+        } else if (type.equals("homeBatteryImport")) {
+            list = metricsLogger.getHomeBatteryImport();
+        } else if (type.equals("homeBatteryExport")) {
+            list = metricsLogger.getHomeBatteryExport();
         }
 
         if (period == null) {
@@ -383,6 +425,10 @@ public class MetricsService {
         int sumevt2 = importMetrics.stream().filter(m -> m.getEvt2() != null).mapToInt(m -> m.getEvt2().multiply(new BigDecimal(1000)).intValue()).sum();
         int sumpvt1 = importMetrics.stream().filter(m -> m.getPvt1() != null).mapToInt(m -> m.getPvt1().multiply(new BigDecimal(1000)).intValue()).sum();
         int sumpvt2 = importMetrics.stream().filter(m -> m.getPvt2() != null).mapToInt(m -> m.getPvt2().multiply(new BigDecimal(1000)).intValue()).sum();
+        int sumbatimt1 = importMetrics.stream().filter(m -> m.getHomeBatteryImportt1() != null).mapToInt(m -> m.getHomeBatteryImportt1().multiply(new BigDecimal(1000)).intValue()).sum();
+        int sumbatimt2 = importMetrics.stream().filter(m -> m.getHomeBatteryImportt2() != null).mapToInt(m -> m.getHomeBatteryImportt2().multiply(new BigDecimal(1000)).intValue()).sum();
+        int sumbatext1 = importMetrics.stream().filter(m -> m.getHomeBatteryExportt1() != null).mapToInt(m -> m.getHomeBatteryExportt1().multiply(new BigDecimal(1000)).intValue()).sum();
+        int sumbatext2 = importMetrics.stream().filter(m -> m.getHomeBatteryExportt2() != null).mapToInt(m -> m.getHomeBatteryExportt2().multiply(new BigDecimal(1000)).intValue()).sum();
         CombinedMetrics totals = new CombinedMetrics();
         totals.setImportt1(new BigDecimal(sumimt1).divide(new BigDecimal(1000)));
         totals.setImportt2(new BigDecimal(sumimt2).divide(new BigDecimal(1000)));
@@ -392,6 +438,10 @@ public class MetricsService {
         totals.setEvt2(new BigDecimal(sumevt2).divide(new BigDecimal(1000)));
         totals.setPvt1(new BigDecimal(sumpvt1).divide(new BigDecimal(1000)));
         totals.setPvt2(new BigDecimal(sumpvt2).divide(new BigDecimal(1000)));
+        totals.setHomeBatteryImportt1(new BigDecimal(sumbatimt1).divide(new BigDecimal(1000)));
+        totals.setHomeBatteryImportt2(new BigDecimal(sumbatimt2).divide(new BigDecimal(1000)));
+        totals.setHomeBatteryExportt1(new BigDecimal(sumbatext1).divide(new BigDecimal(1000)));
+        totals.setHomeBatteryExportt2(new BigDecimal(sumbatext2).divide(new BigDecimal(1000)));
         return totals;
     }
 

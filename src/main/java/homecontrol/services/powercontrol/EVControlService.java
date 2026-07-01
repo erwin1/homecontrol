@@ -74,7 +74,7 @@ public class EVControlService {
         }
         metricsLogger.logEVCharging("VEHICLE_DETECTED_"+connectedVehicle.getName().toUpperCase(), 0);
         metricsLogger.logChargerDataPoint(connectedVehicle.getName());
-        notificationService.sendNotification(NotificationType.INFO, "Vehicle connected : "+connectedVehicle.getName());
+        notificationService.sendNotification(NotificationType.IMPORTANT, "Vehicle connected : "+connectedVehicle.getName());
 
     }
 
@@ -87,7 +87,7 @@ public class EVControlService {
                 LOGGER.info("disable charging so it does not start automatically on next plug-in");
                 stopCharging();
                 connectedVehicle = null;
-                notificationService.sendNotification(NotificationType.INFO, "Vehicle disconnected");
+                notificationService.sendNotification(NotificationType.IMPORTANT, "Vehicle disconnected");
             } else if (storedChargerState.equals(Charger.State.NotConnected)) {
                 //previously not connected, so have to detect vehicle
                 detectConnectedVehicle();

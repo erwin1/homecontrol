@@ -7,8 +7,7 @@ import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.EVException;
 import homecontrol.services.ev.EVState;
 import homecontrol.services.notications.NotificationService;
-import homecontrol.services.powermeter.ActivePower;
-import homecontrol.services.powermeter.ElectricalPowerMeter;
+import homecontrol.services.powermeter.*;
 import homecontrol.services.solar.Inverter;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
@@ -23,12 +22,15 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 @QuarkusTest
 public class PowerControlServiceTest {
 
     @InjectMock
     private ElectricalPowerMeter electricalPowerMeter;
+    @InjectMock
+    private HomeBatteryPowerMeter homeBatteryPowerMeter;
     @InjectMock
     private Inverter inverter;
     @InjectMock
@@ -264,6 +266,8 @@ public class PowerControlServiceTest {
         Mockito.when(evControlService.getCurrentState(Mockito.any())).thenReturn(evState);
 
         Mockito.when(electricalPowerMeter.getActivePower()).thenReturn(Uni.createFrom().item(new ActivePower(ts, activePower, activePowerAverage, new BigDecimal(activeVoltage))));
+        Mockito.when(homeBatteryPowerMeter.getActivePower()).thenReturn(Uni.createFrom().item(new BatteryPower(0, "zero", List.of("charge_allowed", "discharge_allowed"))));
+        Mockito.when(homeBatteryPowerMeter.getCurrentReading()).thenReturn(Uni.createFrom().item(new BatteryMeterReading().setState_of_charge_pct(100)));
         Mockito.when(inverter.getCurrentYield()).thenReturn(Uni.createFrom().item(solarYield));
         Mockito.when(charger.getActivePowerW()).thenReturn(Uni.createFrom().item(powerUsageEVCharging));
     }

@@ -33,9 +33,17 @@ public class OptimalExportChargingService {
      *
      * @return New target charge current in amps (0 = stop charging).
      */
-    public int tick(int gridPowerW, int currentChargingW, int allowedImportW, float voltage, int minChargeAmps, int maxChargeAmps, int solarYieldW, int minSurplusW, int solarYieldThresholdW, int maxHoldAtMinCharging) {
+    public int tick(int gridPowerW, int homeBatteryPowerW, int homeBatterySoC, int currentChargingW, int allowedImportW, float voltage, int minChargeAmps, int maxChargeAmps, int solarYieldW, int minSurplusW, int solarYieldThresholdW, int maxHoldAtMinCharging) {
 
         int currentChargingA = Math.round(currentChargingW / voltage);
+
+        //add battery usage to grid usage
+        gridPowerW = gridPowerW - Math.min(homeBatteryPowerW, 0);
+
+        //if battery soc below 80% -> add 800W fictional grid usage minus what the battery is already using to allow for 800W battery charging
+        if (homeBatterySoC < 80) {
+            gridPowerW = gridPowerW + 800 - Math.max(homeBatteryPowerW, 0);
+        }
 
         if (gridPowerW <= 0) {
             // -----------------------------------------------------------------
@@ -57,8 +65,8 @@ public class OptimalExportChargingService {
                 // Surplus below minChargeAmps but solar is producing well → charge at minimum
                 // to consume remaining solar rather than exporting it
                 currentChargingA = minChargeAmps;
-                log.log(Level.INFO, "Surplus {0}W below minimum but solar {1}W >= threshold {2}W → charging at {3}A",
-                        new Object[]{surplusWatts, solarYieldW, solarYieldThresholdW, minChargeAmps});
+                log.log(Level.INFO, "Surplus {0}W below minimum but solar {1}W >= threshold {2}W → available for charging: {3}W >= {4}W → charging at {5}A",
+                        new Object[]{surplusWatts, solarYieldW, solarYieldThresholdW, totalAvailableForChargingWatts, minSurplusW, minChargeAmps});
             } else {
                 log.log(Level.FINE, "Surplus {0}W insufficient to start charging (need {1}W)",
                         new Object[]{surplusWatts, minChargeAmps * voltage});
@@ -88,8 +96,8 @@ public class OptimalExportChargingService {
 
             } else if (solarYieldThresholdW > 0 && solarYieldW >= solarYieldThresholdW && gridPowerWithoutChargingW < 0 && -gridPowerWithoutChargingW > minSurplusW) {
                 currentChargingA = minChargeAmps;
-                log.log(Level.INFO, "Surplus {0}W below minimum but solar {1}W >= threshold {2}W → charging at {3}A",
-                        new Object[]{-gridPowerWithoutChargingW, solarYieldW, solarYieldThresholdW, minChargeAmps});
+                log.log(Level.INFO, "Surplus {0}W below minimum but solar {1}W >= threshold {2}W → available for charging: {3}W > {4}W → charging at {5}A",
+                        new Object[]{-gridPowerWithoutChargingW, solarYieldW, solarYieldThresholdW, -gridPowerWithoutChargingW, minSurplusW, minChargeAmps});
             } else {
                 // -----------------------------------------------------------------
                 // Throttle would go below minChargeAmps (or we're already at/below it).

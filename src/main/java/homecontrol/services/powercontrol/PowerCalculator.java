@@ -4,7 +4,6 @@ import homecontrol.services.config.EVChargingStrategy;
 import homecontrol.services.powermeter.ActivePower;
 import jakarta.enterprise.context.RequestScoped;
 
-import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,7 +12,7 @@ import java.util.logging.Logger;
 public class PowerCalculator {
     public static final Logger LOGGER = Logger.getLogger(PowerCalculator.class.getName());
 
-    public int calculateOptimalChargingA(EVChargingStrategy chargingStrategy, ActivePower activePower, int currentMonth15minPeak, int solarYieldW, int chargingW, int minimumChargingA, OptimalExportChargingService optimalExportChargingService) {
+    public int calculateOptimalChargingA(EVChargingStrategy chargingStrategy, ActivePower activePower, int homeBatteryPowerW, int homeBatterySoCPct, int currentMonth15minPeak, int solarYieldW, int chargingW, int minimumChargingA, OptimalExportChargingService optimalExportChargingService) {
         ZonedDateTime startOfPeriod = activePower.getTimestamp().minusMinutes(activePower.getTimestamp().getMinute() % 15).withSecond(0).withNano(0);
         long startOfPeriodEpoch = startOfPeriod.toEpochSecond();
 
@@ -37,9 +36,9 @@ public class PowerCalculator {
         float voltage = activePower.getActiveVoltage().floatValue();
         int minimumChargingW = (int) (minimumChargingA * voltage);
 
-        int exportWhenChargingIsExcluded = Math.max(0, chargingW - activePower.getActivePower());
+        int exportWhenChargingIsExcluded = Math.max(0, chargingW - activePower.getActivePower() + Math.min(0, homeBatteryPowerW));
 
-        int currentChargeAmps = Math.round(chargingW/voltage);
+        int currentChargeAmps = Math.round(chargingW/voltage);//TODO this could be lower than the minimum when charging is just being started!!
 
         if (!(chargingStrategy.getType().equals(EVChargingStrategy.Type.EXP_OPT1) || chargingStrategy.getType().equals(EVChargingStrategy.Type.EXP_OPT2))) {
             optimalExportChargingService.reset();
@@ -47,8 +46,8 @@ public class PowerCalculator {
 
         int chargeAtAmps = switch (chargingStrategy.getType()) {
             case EXP -> Math.round(exportWhenChargingIsExcluded / voltage);
-            case EXP_OPT1 -> optimalExportChargingService.tick(activePower.getActivePower(), chargingW, powerDifferenceW, voltage, minimumChargingA, 32, solarYieldW, chargingStrategy.getMinPowerExportW(), chargingStrategy.getMinSolarYieldW(), chargingStrategy.getMaxHoldAtMinCharging());
-            case EXP_OPT2 -> optimalExportChargingService.tick(activePower.getActivePower(), chargingW, powerDifferenceW, voltage, minimumChargingA, 32, solarYieldW, chargingStrategy.getMinPowerExportW(), chargingStrategy.getMinSolarYieldW(), chargingStrategy.getMaxHoldAtMinCharging());
+            case EXP_OPT1 -> optimalExportChargingService.tick(activePower.getActivePower(), homeBatteryPowerW, homeBatterySoCPct, chargingW, powerDifferenceW, voltage, minimumChargingA, 32, solarYieldW, chargingStrategy.getMinPowerExportW(), chargingStrategy.getMinSolarYieldW(), chargingStrategy.getMaxHoldAtMinCharging());
+            case EXP_OPT2 -> optimalExportChargingService.tick(activePower.getActivePower(), homeBatteryPowerW, homeBatterySoCPct, chargingW, powerDifferenceW, voltage, minimumChargingA, 32, solarYieldW, chargingStrategy.getMinPowerExportW(), chargingStrategy.getMinSolarYieldW(), chargingStrategy.getMaxHoldAtMinCharging());
             case MAX -> (int)((chargingW + powerDifferenceW)/voltage);
             case MAX_OPT -> {
                 int newChargingAmps = (int)((chargingW + powerDifferenceW)/voltage);
@@ -83,7 +82,9 @@ public class PowerCalculator {
                         "\tActive power to grid: {1}W\n" +
                         "\tActive power average: {2}W\n" +
                         "\tActive solar yield: {3}W\n" +
-                        "\tActive charging: {4}W\n" +
+                        "\tActive EV charging: {4}W\n" +
+                        "\tActive home battery power: {16}W\n" +
+                        "\tHome battery SoC: {17}%\n" +
                         "\tExport without charging: {5}W\n" +
                         "\tCurrent monthly peak: {6}W\n"+
                         "\tElapsed time in period: {7}s\n"+
@@ -111,7 +112,10 @@ public class PowerCalculator {
                         powerDifferenceW,
                         chargingStrategy,
                         chargeAtAmps,
-                        chargeAtAmps*voltage});
+                        chargeAtAmps*voltage,
+                        homeBatteryPowerW,
+                        homeBatterySoCPct
+                });
 
 
         return chargeAtAmps;

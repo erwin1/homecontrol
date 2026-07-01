@@ -8,6 +8,8 @@ public class LiveMetrics {
     private BigDecimal importW;
     private BigDecimal importAverageW;
     private BigDecimal exportW;
+    private BigDecimal homeBatteryPowerW;
+    private int homeBatteryStateOfCharge;
     private BigDecimal pvW;
     private BigDecimal evW;
     private int evAmps;
@@ -40,6 +42,15 @@ public class LiveMetrics {
 
     public void setImportW(BigDecimal importW) {
         this.importW = importW;
+    }
+
+    public BigDecimal getHomeBatteryPowerW() {
+        return homeBatteryPowerW;
+    }
+
+    public LiveMetrics setHomeBatteryPowerW(BigDecimal homeBatteryPowerW) {
+        this.homeBatteryPowerW = homeBatteryPowerW;
+        return this;
     }
 
     public BigDecimal getExportW() {
@@ -120,5 +131,14 @@ public class LiveMetrics {
 
     public void setPeakEstimateW(BigDecimal peakEstimateW) {
         this.peakEstimateW = peakEstimateW;
+    }
+
+    public int getHomeBatteryStateOfCharge() {
+        return homeBatteryStateOfCharge;
+    }
+
+    public LiveMetrics setHomeBatteryStateOfCharge(int homeBatteryStateOfCharge) {
+        this.homeBatteryStateOfCharge = homeBatteryStateOfCharge;
+        return this;
     }
 }

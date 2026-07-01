@@ -14,6 +14,8 @@
     --color-ev: #25a5f5;
     --color-home: #deadff;
     --color-gridout: #cfcfcf;
+    --color-batteryin: #eef734;
+    --color-batteryout: #fab923;
     --color-gridinnoev: #ff9b4a;
     
     /* Neutral Colors */
@@ -151,6 +153,8 @@ button:active {
 .ev { background-color: var(--color-ev); }
 .home { background-color: var(--color-home); }
 .gridout { background-color: var(--color-gridout); }
+.homebatteryout { background-color: var(--color-batteryout); }
+.homebatteryin { background-color: var(--color-batteryin); }
 .gridinnoev { background-color: var(--color-gridinnoev); }
 
 .legendlabel {

@@ -56,18 +56,20 @@ function updateCharts( data, labelFormatter ) {
     const totalData = {
         datasets: [{
             label: '',
-            data: [data.totals.import, data.totals.pv],
+            data: [data.totals.import, data.totals.homeBatteryExport, data.totals.pv],
             backgroundColor: [
                 '#e3110e',
+                '#fab923',
                 '#43de66'
             ]
         },
         {
             label: '',
-            data: [data.totals.ev, data.totals.totalUsageWithoutEV, data.totals.export ],
+            data: [data.totals.ev, data.totals.totalUsageWithoutEV, data.totals.homeBatteryImport, data.totals.export ],
             backgroundColor: [
                 '#25a5f5',
                 '#deadff',
+                '#eef734',
                 '#cfcfcf'
             ]
         }]
@@ -81,6 +83,8 @@ function updateCharts( data, labelFormatter ) {
     $("#totalgridin").html(data.totals.import+" kWh");
     $("#totalgridout").html(data.totals.export+" kWh");
     $("#totalev").html(data.totals.ev+" kWh");
+    $("#homebatteryout").html(data.totals.homeBatteryExport+" kWh");
+    $("#homebatteryin").html(data.totals.homeBatteryImport+" kWh");
     var intotal = data.totals.import;
     var inhome = Math.round((intotal - data.totals.ev) * 100) / 100;
 
@@ -113,6 +117,8 @@ function updateCharts( data, labelFormatter ) {
     var dataPVUsage = new Array();
     var dataExport = new Array();
     var dataImport = new Array();
+    var homeBatteryImport = new Array();
+    var homeBatteryExport = new Array();
     var labels = new Array();
     for(i=0;i<data.details.length;i++) {
         let d = data.details[i];
@@ -124,6 +130,8 @@ function updateCharts( data, labelFormatter ) {
        dataPVUsage.push((d.pv-d.export)*1000);
        dataExport.push(d.export * -1000);
        dataImport.push(d.import * 1000);
+       homeBatteryExport.push(d.homeBatteryExport * 1000);
+       homeBatteryImport.push(d.homeBatteryImport * 1000);
     }
 
     const d = {
@@ -136,6 +144,12 @@ function updateCharts( data, labelFormatter ) {
               stack: 'Usage',
             },
             {
+              label: 'Battery charging',
+              data: homeBatteryImport,
+              backgroundColor: "#fab923",
+              stack: 'Usage',
+            },
+            {
               label: 'EV Usage',
               data: dataEV,
               backgroundColor: "#25a5f5",
@@ -144,8 +158,8 @@ function updateCharts( data, labelFormatter ) {
             {
               label: 'Exported PV',
               data: dataExport,
-              backgroundColor: "#cfcfcf",
-              stack: 'Usage',
+              backgroundColor: "#43de66",
+              stack: 'Production',
             },
             {
               label: 'Used PV',
@@ -154,15 +168,15 @@ function updateCharts( data, labelFormatter ) {
               stack: 'Production',
             },
             {
-              label: 'Import',
-              data: dataImport,
-              backgroundColor: "red",
+              label: 'Battery usage',
+              data: homeBatteryExport,
+              backgroundColor: "#eef734",
               stack: 'Production',
             },
             {
-              label: 'Exported PV',
-              data: dataExport,
-              backgroundColor: "#43de66",
+              label: 'Import',
+              data: dataImport,
+              backgroundColor: "red",
               stack: 'Production',
             },
         ]
@@ -259,6 +273,7 @@ $(function () {
 
     $( "#datepicker" ).datepicker({
         dateFormat: "dd-mm-yy",
+        firstDay: 1,
         changeMonth: true,
         changeYear: true,
         onSelect: function(date, dp) {

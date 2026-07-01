@@ -2,6 +2,7 @@ package homecontrol.impl.sma;
 
 import homecontrol.services.ev.Charger;
 import homecontrol.services.ev.StateRefresh;
+import io.quarkus.cache.CacheResult;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -80,8 +81,9 @@ public class SMACharger implements Charger {
      */
     public BigDecimal readActivePower() {
         try {
-            Document doc = parse(httpGet("http://"+chargerIp+"/SEMP"));
-            return parseDouble(firstText(doc, "AveragePower"));
+            Document doc = parse(httpGet("http://" + chargerIp + "/SEMP/Parameters"));
+            String raw = parameterValue(doc, "Measurement.Metering.GridMs.TotWIn.ChaSta");
+            return parseDouble(raw);
         } catch (IOException e) {
             throw new UncheckedIOException("SEMP read failed", e);
         } catch (InterruptedException e) {
@@ -231,6 +233,7 @@ public class SMACharger implements Charger {
     @Override
     @Asynchronous
     @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
+    @CacheResult(cacheName = "sma-charger-power")
     public Uni<Integer> getActivePowerW() {
         int activePower = readActivePower().intValue();
         this.activePowerW = activePower;
@@ -253,12 +256,14 @@ public class SMACharger implements Charger {
         return (int) getConsumptionMeterReading();
     }
 
+    @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public void startCharging() {
         String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
         put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4718\"}]}");
     }
 
     @Override
+    @Retry(maxRetries = 1, delay = 2, delayUnit = ChronoUnit.SECONDS)
     public void stopCharging() {
         String d = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'.000Z'").format(ZonedDateTime.now(ZoneId.of("UTC")));
         put("{\"values\":[{\"channelId\":\"Parameter.Chrg.ActChaMod\",\"timestamp\":\""+d+"\",\"value\":\"4721\"}]}");

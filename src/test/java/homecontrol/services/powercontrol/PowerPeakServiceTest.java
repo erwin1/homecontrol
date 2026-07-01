@@ -158,6 +158,7 @@ public class PowerPeakServiceTest {
         } else {
             when(charger.getCurrentState(Mockito.any())).thenReturn(Charger.State.InProgress);
             when(charger.getLastKnownActivePower()).thenReturn(charging);
+            when(charger.getActivePowerW()).thenReturn(Uni.createFrom().item(charging));
         }
         when(electricalPowerMeter.getActivePower()).thenReturn(Uni.createFrom().item(new ActivePower(zonedDateTime, activePower, activePowerAvg, new BigDecimal(228.2))));
     }

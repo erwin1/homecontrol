@@ -1,12 +1,16 @@
 package homecontrol.impl.hwep1;
 
+import homecontrol.impl.sma.HttpHelper;
 import io.quarkus.cache.CacheResult;
 import io.smallrye.mutiny.tuples.Tuple2;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import javax.net.ssl.HttpsURLConnection;
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -26,8 +30,13 @@ public class HWEP1Client {
 
     @ConfigProperty(name = "EVCHARGING_HWEP1_IP")
     String ip;
+    @ConfigProperty(name = "EVCHARGING_HWEP1_TOKEN")
+    String token;
+    @ConfigProperty(name = "EVCHARGING_HWEP1_BATTERY_IP")
+    String batteryIp;
+    @ConfigProperty(name = "EVCHARGING_HWEP1_BATTERY_TOKEN")
+    String batteryToken;
 
-    @CacheResult(cacheName = "hwep1-data")
     JsonObject getJsonData() throws IOException {
         LOGGER.fine("Requesting data from HWEP1");
 
@@ -43,6 +52,74 @@ public class HWEP1Client {
         JsonObject object = new JsonObject(body);
 
         return object;
+    }
+
+
+    @CacheResult(cacheName = "hwep1-batteries")
+    public JsonObject getBatteries() throws IOException {
+        HttpsURLConnection conn = HttpHelper.openConnection("https://"+ip+"/api/batteries");
+        try {
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-Api-Version", "2");
+            conn.setRequestProperty("Authorization", "Bearer "+token);
+            if (conn.getResponseCode() != 200) {
+                throw new RuntimeException("error getting hwep1 batteries "+conn.getResponseCode());
+            }
+            String body = new String(conn.getInputStream().readAllBytes());
+            conn.getInputStream().close();
+            JsonObject object = new JsonObject(body);
+            return object;
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    public JsonObject putBatteriesPermissions(List<String> permissions) throws IOException {
+        HttpsURLConnection conn = HttpHelper.openConnection("https://"+ip+"/api/batteries");
+        try {
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-Api-Version", "2");
+            conn.setRequestProperty("Authorization", "Bearer "+token);
+            conn.setRequestMethod("PUT");
+
+            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+            //{"permissions": ["charge_allowed", "discharge_allowed"]}
+            StringBuilder body = new StringBuilder("{\"permissions\": [");
+            body.append(permissions.stream().map(s -> "\""+s+"\"").collect(Collectors.joining(",")));
+            body.append("]}");
+            writer.write(body.toString());
+            writer.flush();
+
+            if (conn.getResponseCode() != 200) {
+                throw new RuntimeException("error getting hwep1 batteries "+conn.getResponseCode());
+            }
+            String rsp = new String(conn.getInputStream().readAllBytes());
+            conn.getInputStream().close();
+            JsonObject object = new JsonObject(rsp);
+            return object;
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    @CacheResult(cacheName = "hwep1-batteries-measurement")
+    public JsonObject getBatteryMeasurement() throws IOException {
+        HttpsURLConnection conn = HttpHelper.openConnection("https://"+batteryIp+"/api/measurement");
+        try {
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("X-Api-Version", "2");
+            conn.setRequestProperty("Authorization", "Bearer "+batteryToken);
+            if (conn.getResponseCode() != 200) {
+                throw new RuntimeException("error getting hwep1 battery measurement "+conn.getResponseCode());
+            }
+            String body = new String(conn.getInputStream().readAllBytes());
+            conn.getInputStream().close();
+            JsonObject object = new JsonObject(body);
+            return object;
+        } finally {
+            conn.disconnect();
+        }
     }
 
     @CacheResult(cacheName = "hwep1-telegram")

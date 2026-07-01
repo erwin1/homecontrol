@@ -5,7 +5,9 @@ import homecontrol.services.ev.ElectricVehicle;
 import homecontrol.services.notications.NotificationType;
 import homecontrol.services.notications.NotificationService;
 import homecontrol.services.powercontrol.EVControlService;
+import homecontrol.services.powermeter.BatteryMeterReading;
 import homecontrol.services.powermeter.ElectricalPowerMeter;
+import homecontrol.services.powermeter.HomeBatteryPowerMeter;
 import homecontrol.services.powermeter.MeterReading;
 import homecontrol.services.solar.Inverter;
 import io.quarkus.scheduler.Scheduled;
@@ -20,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,6 +43,8 @@ public class MetricsLogger {
 
     @Inject
     ElectricalPowerMeter powerMeter;
+    @Inject
+    HomeBatteryPowerMeter homeBatteryPowerMeter;
 
     @Inject
     private EVControlService evControlService;
@@ -57,8 +62,10 @@ public class MetricsLogger {
         LOGGER.info("initializing metrics logger");
         gridExport = readFiles(Path.of(dataPath.get()).resolve("total_power_export_t1_kwh.csv"), Path.of(dataPath.get()).resolve("total_power_export_t2_kwh.csv"));
         gridImport = readFiles(Path.of(dataPath.get()).resolve("total_power_import_t1_kwh.csv"), Path.of(dataPath.get()).resolve("total_power_import_t2_kwh.csv"));
-        charger = readFile(Path.of(dataPath.get()).resolve("total_power_charger_kwh.csv"));
-        pv = readFile(Path.of(dataPath.get()).resolve("total_power_pv_kwh.csv"));
+        charger = readFile(Path.of(dataPath.get()).resolve("total_power_charger_kwh.csv"), 1000);
+        pv = readFile(Path.of(dataPath.get()).resolve("total_power_pv_kwh.csv"), 1000);
+        homeBatteryExport = readFile(Path.of(dataPath.get()).resolve("battery_power_export_kwh.csv"), 1);
+        homeBatteryImport = readFile(Path.of(dataPath.get()).resolve("battery_power_import_kwh.csv"), 1);
         LOGGER.info("initializing metrics logger done");
     }
 
@@ -66,6 +73,8 @@ public class MetricsLogger {
     List<Metrics> gridExport;
     List<Metrics> charger;
     List<Metrics> pv;
+    List<Metrics> homeBatteryExport;
+    List<Metrics> homeBatteryImport;
 
     public List<Metrics> getGridImport() {
         return gridImport;
@@ -83,6 +92,13 @@ public class MetricsLogger {
         return pv;
     }
 
+    public List<Metrics> getHomeBatteryExport() {
+        return homeBatteryExport;
+    }
+
+    public List<Metrics> getHomeBatteryImport() {
+        return homeBatteryImport;
+    }
 
     @Scheduled(cron="0 0 * * * ?")
     void log() throws IOException {
@@ -137,6 +153,23 @@ public class MetricsLogger {
         } catch(Exception e) {
             e.printStackTrace();
             notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log SMA PV data "+e);
+        }
+
+        try {
+            BatteryMeterReading batteryMeterReading = homeBatteryPowerMeter.getCurrentReading().await().atMost(Duration.ofSeconds(5));
+
+            Path batteryExport = path.resolve("battery_power_export_kwh.csv");
+            try (BufferedWriter writer = Files.newBufferedWriter(batteryExport, StandardOpenOption.CREATE,StandardOpenOption.APPEND)) {
+                writer.write(tsString+","+ batteryMeterReading.getEnergy_export_kwh()+"\n");
+            }
+            Path batteryImport = path.resolve("battery_power_import_kwh.csv");
+            try (BufferedWriter writer = Files.newBufferedWriter(batteryImport, StandardOpenOption.CREATE,StandardOpenOption.APPEND)) {
+                writer.write(tsString+","+ batteryMeterReading.getEnergy_import_kwh()+"\n");
+            }
+
+        } catch(Exception e) {
+            e.printStackTrace();
+            notificationService.sendNotification(NotificationType.ERROR, "MetricsLogger: Could not log home battery data "+e);
         }
 
         try {
@@ -255,33 +288,33 @@ public class MetricsLogger {
         }
     }
 
-    List<Metrics> readFile(Path f) throws IOException {
-        List<String> charger = Files.readAllLines(f);
+    List<Metrics> readFile(Path f, int scale) throws IOException {
+        List<String> allInput = Files.readAllLines(f);
 
-        List<Metrics> toCharger = new ArrayList<>();
+        List<Metrics> resultMetrics = new ArrayList<>();
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZZ");
 
-        List<Metrics> metricscharger = new LinkedList<>();
-        for(String line : charger) {
+        List<Metrics> metricsList = new LinkedList<>();
+        for(String line : allInput) {
             String[] parsed = line.split(",");
             String label = parsed.length > 2 ? parsed[2] : labelIfUnknown;
             ZonedDateTime time = ZonedDateTime.parse(parsed[0], formatter).withZoneSameInstant(ZoneId.of("Europe/Brussels"));
-            BigDecimal value = new BigDecimal(parsed[1]).divide(new BigDecimal(1000));
+            BigDecimal value = new BigDecimal(parsed[1]).divide(new BigDecimal(scale));
             Metrics metrics = new Metrics(time, null, value, BigDecimal.ZERO, label);
-            metricscharger.add(metrics);
+            metricsList.add(metrics);
         }
 
-        for(int i = 0; i < metricscharger.size() - 1; i++) {
-            Metrics m1 = metricscharger.get(i);
-            Metrics m2 = metricscharger.get(i + 1);
+        for(int i = 0; i < metricsList.size() - 1; i++) {
+            Metrics m1 = metricsList.get(i);
+            Metrics m2 = metricsList.get(i + 1);
             ZonedDateTime time = m1.getTimestamp();
             BigDecimal value = m2.getValuet1().subtract(m1.getValuet1());
             Metrics metrics = new Metrics(m1.getTimestamp(), null, inPeakHours(time) ? value : BigDecimal.ZERO, inPeakHours(time) ? BigDecimal.ZERO : value, m1.getLabel());
-            toCharger.add(metrics);
+            resultMetrics.add(metrics);
         }
 
-        return toCharger;
+        return resultMetrics;
     }
 
     private boolean inPeakHours(ZonedDateTime time) {

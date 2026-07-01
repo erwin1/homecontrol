@@ -74,7 +74,7 @@ public class PowerPeakService {
 
         if (this.monthlyPowerPeak != null) {
             if (!this.monthlyPowerPeak.getTimestamp().equals(currentMonthPeak.getTimestamp())) {
-                notificationService.sendNotification(NotificationType.PEAK_WARNING, "!!! New Peak: "+currentMonthPeak.getValue()+"W\n"+currentMonthPeak.getTimestamp());
+                notificationService.sendNotification(NotificationType.WARNING, "!!! New Peak: "+currentMonthPeak.getValue()+"W\n"+currentMonthPeak.getTimestamp());
             }
         }
         this.monthlyPowerPeak = currentMonthPeak;
@@ -102,7 +102,7 @@ public class PowerPeakService {
                         currentMonthPeak.getTimestamp(),
                         estimatedPeakW);
                 LOGGER.log(Level.SEVERE, message);
-                notificationService.sendNotification(NotificationType.PEAK_WARNING, message);
+                notificationService.sendNotification(NotificationType.WARNING, message);
             }
         }
     }
@@ -120,7 +120,7 @@ public class PowerPeakService {
         ActivePower activePower = electricalPowerMeter.getActivePower().await().atMost(Duration.ofSeconds(10));
         int chargingW = 0;
         if (charger.getCurrentState(StateRefresh.CACHED).equals(Charger.State.InProgress)) {
-            chargingW = charger.getLastKnownActivePower();
+            chargingW = charger.getActivePowerW().await().atMost(Duration.ofSeconds(10));
         }
         return Tuple3.of(estimatePeakInCurrentPeriod(activePower, chargingW), activePower, chargingW);
     }
